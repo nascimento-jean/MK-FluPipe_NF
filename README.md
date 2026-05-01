@@ -118,6 +118,21 @@ Você pode usar uma destas opções:
 - **Docker**
 - **Singularity / Apptainer**
 
+#### 5.4. O que vem no GitHub e o que é criado depois
+O repositório GitHub **não armazena**:
+
+- imagens Docker já construídas;
+- arquivos `.sif` do Singularity;
+- bancos em `mk_flupipe_db/`;
+- outputs de execução, caches e diretórios `work/`.
+
+Depois de fazer `git clone`, o fluxo esperado é:
+
+1. entrar na pasta do projeto;
+2. construir as imagens locais com os scripts em `containers/`;
+3. executar o pipeline;
+4. deixar o próprio pipeline baixar/recriar automaticamente os bancos necessários.
+
 ### 6. Estratégia de containers
 O pipeline foi configurado para usar **3 grupos de imagens**:
 
@@ -391,6 +406,21 @@ You may use one of the following:
 
 - **Docker**
 - **Singularity / Apptainer**
+
+#### 5.4. What is stored in GitHub and what is generated later
+The GitHub repository does **not** store:
+
+- prebuilt Docker images;
+- Singularity `.sif` files;
+- databases under `mk_flupipe_db/`;
+- execution outputs, caches, or `work/` directories.
+
+After `git clone`, the expected workflow is:
+
+1. enter the project directory;
+2. build the local images using the scripts in `containers/`;
+3. run the pipeline;
+4. let the pipeline automatically download or recreate the required databases.
 
 ### 6. Container strategy
 The workflow is configured around **3 image groups**:
