@@ -1,0 +1,24 @@
+name: base
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - fastqc
+  - fastp
+  - filtlong
+  - bowtie2
+  - minimap2
+  - samtools
+  - bcftools
+  - ivar
+  - blast
+  - nextclade
+  - multiqc
+  - mafft
+  - seqtk
+  - pigz
+  - wget
+  - curl
+  - entrez-direct

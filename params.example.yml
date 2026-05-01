@@ -1,0 +1,40 @@
+input_dir: /path/to/fastqs
+output_dir: /path/to/results
+irma_module: FLU
+seq_type: auto
+seq_mode: ""
+
+run_fastqc: true
+host_depletion: false
+run_ivar: false
+run_medaka: false
+run_antiviral: true
+run_h5_virulence: true
+run_fullvarcall: false
+
+adapter_fasta: ""
+min_len_short: 75
+min_len_long: 200
+max_len_long: 0
+min_qual: 20
+filtlong_min_mean_q: null
+min_coverage: 50
+max_n_pct: 10
+min_segments: 4
+
+ivar_freq: 0.03
+ivar_depth: 10
+minority_freq: 0.20
+coinfection_pct: 5.0
+medaka_env: medaka_env
+gisaid_location: ""
+gisaid_year: 2026
+
+run_legacy_bridge: false
+legacy_script: /path/to/script_influenza_gui.sh
+mk_flu_conda_env: /home/jean_nascimento/miniconda3/envs/mk_flu
+medaka_conda_env: /home/jean_nascimento/miniconda3/envs/medaka_env
+human_db_dir: /home/jean_nascimento/mk_flupipe_db/human_genome
+human_fasta_name: GRCh38_no_alt.fna
+human_index_prefix: GRCh38
+human_genome_url: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz

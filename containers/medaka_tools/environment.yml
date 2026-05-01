@@ -1,0 +1,11 @@
+name: base
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - medaka
+  - minimap2
+  - samtools
+  - bcftools
