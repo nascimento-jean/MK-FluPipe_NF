@@ -3,469 +3,168 @@
 
 # MK Flu-Pipe Nextflow
 
-**A reproducible DSL2 Nextflow workflow for Influenza short-read and long-read analysis**  
-**Um workflow reprodutível em Nextflow DSL2 para análise de Influenza com short reads e long reads**
+**A reproducible DSL2 Nextflow workflow for Influenza short-read and long-read analysis**
 
-[![Nextflow](https://img.shields.io/badge/Nextflow-DSL2-23aa62?style=for-the-badge)](https://www.nextflow.io/)  
-[![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge)](https://www.docker.com/)  
-[![Singularity](https://img.shields.io/badge/Containers-Singularity%20%2F%20Apptainer-1f6feb?style=for-the-badge)](https://sylabs.io/docs/)  
+[![Nextflow](https://img.shields.io/badge/Nextflow-DSL2-23aa62?style=for-the-badge)](https://www.nextflow.io/)
+[![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge)](https://www.docker.com/)
+[![Singularity](https://img.shields.io/badge/Containers-Singularity%20%2F%20Apptainer-1f6feb?style=for-the-badge)](https://sylabs.io/docs/)
 [![IRMA](https://img.shields.io/badge/IRMA-v1.3.2-8a2be2?style=for-the-badge)](https://hub.docker.com/r/cdcgov/irma)
 </div>
 
 ---
 
-## Português (Brasil)
-
-### Índice
-- [1. O que é este projeto?](#1-o-que-é-este-projeto)
-- [2. O que o pipeline faz?](#2-o-que-o-pipeline-faz)
-- [3. Estado atual da implementação](#3-estado-atual-da-implementação)
-- [4. Requisitos mínimos](#4-requisitos-mínimos)
-- [5. Instalação rápida](#5-instalação-rápida)
-- [6. Estratégia de containers](#6-estratégia-de-containers)
-- [7. Como executar o pipeline](#7-como-executar-o-pipeline)
-- [8. Principais parâmetros](#8-principais-parâmetros)
-- [9. Estrutura dos resultados](#9-estrutura-dos-resultados)
-- [10. Bancos de dados baixados automaticamente](#10-bancos-de-dados-baixados-automaticamente)
-- [11. Dúvidas frequentes](#11-dúvidas-frequentes)
-- [12. English version](#12-english-version)
-
-### 1. O que é este projeto?
-`MK Flu-Pipe Nextflow` é a migração do pipeline original em Bash/GTK para **Nextflow DSL2**, com foco em:
-
-- reprodutibilidade;
-- execução modular;
-- suporte a **short reads** e **long reads**;
-- uso de **containers** para reduzir dependências manuais;
-- documentação clara para usuários iniciantes e avançados.
-
-O pipeline foi organizado para rodar em **Linux**, incluindo:
-- **Ubuntu nativo**;
-- **WSL (Windows Subsystem for Linux)**.
-
-### 2. O que o pipeline faz?
-O fluxo analítico cobre a cadeia principal de análise de Influenza:
-
-1. descoberta das amostras;
-2. planejamento automático da execução;
-3. controle de qualidade bruto (`FastQC`);
-4. pré-processamento:
-   - `fastp` para short reads;
-   - `Filtlong` para long reads;
-5. remoção de hospedeiro:
-   - `Bowtie2` para short reads;
-   - `minimap2` para long reads;
-6. montagem com `IRMA`;
-7. extração dos 8 segmentos e QC pós-montagem;
-8. tipagem por `BLAST`;
-9. classificação por `Nextclade`;
-10. variant calling canônico:
-   - `iVar` para short reads;
-   - `Medaka` para long reads;
-11. resistência antiviral;
-12. marcadores de virulência H5;
-13. variant calling completo contra `RefSeq NC_* + GFF3` (`Step 10b`);
-14. análise de coinfecção / subtype mixing;
-15. consolidação final de saídas para vigilância e preparação para GISAID.
-
-### 3. Estado atual da implementação
-No momento, os seguintes módulos já foram implementados e testados com sucesso:
-
-- descoberta de amostras;
-- `FastQC`;
-- `fastp`;
-- `Filtlong`;
-- remoção de hospedeiro com `Bowtie2` e `minimap2`;
-- `IRMA` short e long;
-- extração de segmentos;
-- `assembly_qc` e `samtools depth`;
-- tipagem por `BLAST`;
-- `Nextclade`;
-- `iVar` canônico;
-- `Medaka`;
-- resistência antiviral;
-- virulência H5;
-- `Step 10b` (`RefSeq + GFF3`);
-- coinfecção;
-- relatórios finais para vigilância.
-
-### 4. Requisitos mínimos
-Para executar a versão atual do pipeline, recomenda-se:
-
-- Linux / Ubuntu ou WSL;
-- `Nextflow` instalado e funcional;
-- **Docker** ou **Singularity / Apptainer** instalado;
-- acesso à internet na primeira execução para download de imagens e bancos;
-- pelo menos 8 GB de RAM para testes pequenos;
-- mais memória e CPUs para lotes maiores.
-
-### 5. Instalação rápida
-#### 5.1. Clonar ou copiar o projeto
-Coloque o projeto em um diretório de trabalho, por exemplo:
-
-```bash
-/home/usuario/MK_Flu-Pipe-nextflow
-```
-
-#### 5.2. Confirmar o Nextflow
-```bash
-nextflow -version
-```
-
-#### 5.3. Escolher backend de container
-Você pode usar uma destas opções:
-
-- **Docker**
-- **Singularity / Apptainer**
-
-#### 5.4. O que vem no GitHub e o que é criado depois
-O repositório GitHub **não armazena**:
-
-- imagens Docker já construídas;
-- arquivos `.sif` do Singularity;
-- bancos em `mk_flupipe_db/`;
-- outputs de execução, caches e diretórios `work/`.
-
-Depois de fazer `git clone`, o fluxo esperado é:
-
-1. entrar na pasta do projeto;
-2. construir as imagens locais com os scripts em `containers/`;
-3. executar o pipeline;
-4. deixar o próprio pipeline baixar/recriar automaticamente os bancos necessários.
-
-### 6. Estratégia de containers
-O pipeline foi configurado para usar **3 grupos de imagens**:
-
-- `irma_tools`
-  - usa automaticamente `cdcgov/irma:v1.3.2`
-- `mk_flu_tools`
-  - imagem local com o stack principal do pipeline
-- `medaka_tools`
-  - imagem local para rotinas que dependem do `Medaka`
-
-#### 6.1. Construir imagens Docker locais
-No diretório raiz do projeto:
-
-```bash
-bash containers/build_docker_images.sh
-```
-
-Isso gera localmente:
-
-- `mk-flu-pipe/mk_flu_tools:local`
-- `mk-flu-pipe/medaka_tools:local`
-
-#### 6.2. Construir imagens Singularity / Apptainer
-Depois que as imagens Docker locais estiverem prontas:
-
-```bash
-bash containers/build_singularity_images.sh
-```
-
-Isso gera, por padrão:
-
-- `containers/sif/mk_flu_tools_local.sif`
-- `containers/sif/medaka_tools_local.sif`
-
-### 7. Como executar o pipeline
-#### 7.1. Perfis recomendados
-Use sempre o perfil base `linux` junto com o backend desejado:
-
-- `-profile linux,docker`
-- `-profile linux,singularity`
-
-Os perfis `wsl` e `ubuntu` continuam disponíveis como aliases de compatibilidade, mas o perfil recomendado é `linux`.
-
-#### 7.2. Exemplo: short reads com Docker
-```bash
-nextflow run main.nf \
-  -resume \
-  -profile linux,docker \
-  --input_dir /caminho/para/FLU/ \
-  --output_dir mk-flupipe_short_results \
-  --irma_module FLU-utr \
-  --host_depletion true \
-  --run_ivar true \
-  --run_antiviral true \
-  --run_h5_virulence true \
-  --run_fullvarcall true
-```
-
-#### 7.3. Exemplo: long reads com Singularity
-```bash
-nextflow run main.nf \
-  -resume \
-  -profile linux,singularity \
-  --input_dir /caminho/para/FLU_long/ \
-  --output_dir mk-flupipe_long_results \
-  --irma_module FLU-minion \
-  --seq_type long \
-  --host_depletion true \
-  --min_len_long 200 \
-  --max_len_long 0 \
-  --filtlong_min_mean_q 10 \
-  --run_medaka true \
-  --run_antiviral true \
-  --run_h5_virulence true \
-  --run_fullvarcall true
-```
-
-#### 7.4. Exemplo com controle de recursos
-```bash
-nextflow run main.nf \
-  -resume \
-  -profile linux,docker \
-  --input_dir /caminho/para/FLU/ \
-  --output_dir mk-flupipe_results \
-  --irma_module FLU-utr \
-  --max_cpus 8 \
-  --max_memory "24 GB" \
-  --queue_size 4
-```
-
-### 8. Principais parâmetros
-| Parâmetro | Descrição |
-|---|---|
-| `--input_dir` | Pasta contendo os FASTQ/FASTQ.GZ de entrada |
-| `--output_dir` | Pasta onde os resultados serão gravados |
-| `--irma_module` | Módulo do IRMA, por exemplo `FLU-utr` ou `FLU-minion` |
-| `--seq_type` | `auto`, `long`, `short`, etc. |
-| `--host_depletion` | Ativa ou desativa remoção de hospedeiro |
-| `--run_ivar` | Ativa variant calling canônico por `iVar` (short) |
-| `--run_medaka` | Ativa variant calling por `Medaka` (long) |
-| `--run_antiviral` | Ativa análise de resistência antiviral |
-| `--run_h5_virulence` | Ativa análise de virulência H5 |
-| `--run_fullvarcall` | Ativa o `Step 10b` com `RefSeq + GFF3` |
-| `--max_cpus` | Limite global de CPUs por processo |
-| `--max_memory` | Limite global de memória por processo |
-| `--queue_size` | Número máximo de tarefas locais em paralelo |
-
-### 9. Estrutura dos resultados
-Os diretórios principais normalmente incluem:
-
-- `qc_reports/`
-- `preprocessed_reads/`
-- `depleted_reads/`
-- `irma_runs_short/` ou `irma_runs_long/`
-- `assembly_final/`
-- `variant_calls/`
-- `variant_calls_canonical_long/`
-- `full_variant_calls/`
-- `depth_per_position/`
-- `Surveillance_Outputs/`
-
-Arquivos de interesse frequente:
-
-- `assembly_final/blast_results/blast_typing_summary.tsv`
-- `assembly_final/nextclade_results/nextclade_summary.tsv`
-- `assembly_final/antiviral_resistance/antiviral_resistance.tsv`
-- `assembly_final/h5_virulence/h5_virulence_markers.tsv`
-- `assembly_final/coinfection/coinfection_report.tsv`
-- `full_variant_calls/all_samples_protein_mutations.tsv`
-- `Surveillance_Outputs/surveillance_report.html`
-- `Surveillance_Outputs/multisample_consensus.fasta`
-
-### 10. Bancos de dados baixados automaticamente
-O pipeline recria e popula `mk_flupipe_db/` automaticamente conforme necessário. Entre os recursos baixados/preparados estão:
-
-- genoma humano / índice para host depletion;
-- banco de `BLAST` de influenza;
-- datasets do `Nextclade`;
-- referências canônicas;
-- referências `RefSeq NC_*` e arquivos `GFF3`;
-- base de marcadores de resistência antiviral.
-
-Se `mk_flupipe_db/` for removido, ele é reconstruído na próxima execução.
-
-### 11. Dúvidas frequentes
-#### O pipeline precisa de Conda?
-Não. A estratégia recomendada agora é baseada em **Docker** e **Singularity**.
-
-#### O IRMA precisa estar instalado no sistema?
-Não necessariamente. O pipeline usa a imagem:
-
-```text
-cdcgov/irma:v1.3.2
-```
-
-#### Posso rodar no WSL?
-Sim. O perfil `linux` foi validado em WSL.
-
-#### Posso rodar no Ubuntu nativo?
-Sim. O mesmo perfil `linux` foi pensado para Ubuntu nativo.
-
-#### O que acontece com bases degeneradas?
-As sequências finais usadas em:
-- `assembly_final/`
-- `Surveillance_Outputs/multisample_consensus.fasta`
-- `Surveillance_Outputs/GISAID_ready/gisaid_sequences.fasta`
-
-são normalizadas para converter bases degeneradas em `N`, seguindo a lógica do pipeline original.
-
----
-
-## English Version
-
-### Contents
-- [1. What is this project?](#1-what-is-this-project)
-- [2. What does the pipeline do?](#2-what-does-the-pipeline-do)
+## Contents
+- [1. Overview](#1-overview)
+- [2. What the pipeline does](#2-what-the-pipeline-does)
 - [3. Current implementation status](#3-current-implementation-status)
-- [4. Minimum requirements](#4-minimum-requirements)
-- [5. Quick installation](#5-quick-installation)
+- [4. Requirements](#4-requirements)
+- [5. Installation and setup](#5-installation-and-setup)
 - [6. Container strategy](#6-container-strategy)
-- [7. How to run the pipeline](#7-how-to-run-the-pipeline)
+- [7. Running the pipeline](#7-running-the-pipeline)
 - [8. Main parameters](#8-main-parameters)
-- [9. Output structure](#9-output-structure)
-- [10. Databases downloaded automatically](#10-databases-downloaded-automatically)
-- [11. Frequently asked questions](#11-frequently-asked-questions)
+- [9. Outputs](#9-outputs)
+- [10. Databases and cache behavior](#10-databases-and-cache-behavior)
+- [11. GitHub releases and packages](#11-github-releases-and-packages)
+- [12. Frequently asked questions](#12-frequently-asked-questions)
 
-### 1. What is this project?
-`MK Flu-Pipe Nextflow` is the migration of the original Bash/GTK workflow to **Nextflow DSL2**, with emphasis on:
+## 1. Overview
+`MK Flu-Pipe Nextflow` is the Nextflow DSL2 implementation of the MK Flu-Pipe Influenza workflow. It is designed to be reproducible, modular, and friendly to both first-time and experienced users.
 
-- reproducibility;
-- modular execution;
-- support for **short-read** and **long-read** Influenza data;
-- container-based deployment to reduce manual dependencies;
-- beginner-friendly and advanced-user documentation.
+The workflow supports:
+- short-read Illumina data;
+- long-read ONT data;
+- Docker and Singularity / Apptainer execution;
+- Linux, native Ubuntu, and WSL environments.
 
-The workflow is intended to run on **Linux**, including:
-- **native Ubuntu**;
-- **WSL (Windows Subsystem for Linux)**.
+## 2. What the pipeline does
+The pipeline covers the core Influenza analysis chain from raw reads to final surveillance outputs.
 
-### 2. What does the pipeline do?
-The analytical workflow covers the main Influenza analysis chain:
+### Short-read branch
+1. Sample discovery and automatic run planning.
+2. Raw read QC with `FastQC`.
+3. Preprocessing with `fastp`.
+4. Host depletion with `Bowtie2`.
+5. Assembly with `IRMA` using `FLU` / `FLU-utr` modules.
+6. Segment extraction and post-assembly QC.
+7. Typing with `BLAST`.
+8. Clade assignment with `Nextclade`.
+9. Canonical variant calling with `iVar`.
+10. Antiviral resistance screening.
+11. H5 virulence marker screening when applicable.
+12. Full protein mutation calling against `RefSeq NC_* + GFF3` (`Step 10b`).
+13. Coinfection / subtype mixing analysis.
+14. Final dashboard and surveillance output generation.
 
-1. sample discovery;
-2. automatic execution planning;
-3. raw-read QC (`FastQC`);
-4. preprocessing:
-   - `fastp` for short reads;
-   - `Filtlong` for long reads;
-5. host depletion:
-   - `Bowtie2` for short reads;
-   - `minimap2` for long reads;
-6. assembly with `IRMA`;
-7. segment extraction and post-assembly QC;
-8. `BLAST` typing;
-9. `Nextclade` classification;
-10. canonical variant calling:
-   - `iVar` for short reads;
-   - `Medaka` for long reads;
-11. antiviral resistance;
-12. H5 virulence markers;
-13. complete variant calling against `RefSeq NC_* + GFF3` (`Step 10b`);
-14. coinfection / subtype mixing analysis;
-15. final surveillance and GISAID-ready output consolidation.
+### Long-read branch
+1. Sample discovery and automatic run planning.
+2. Raw read QC with `FastQC`.
+3. Preprocessing with `Filtlong`.
+4. Host depletion with `minimap2`.
+5. Assembly with `IRMA` using `FLU-minion`.
+6. Segment extraction and post-assembly QC.
+7. Typing with `BLAST`.
+8. Clade assignment with `Nextclade`.
+9. Canonical variant calling with `Medaka`.
+10. Antiviral resistance screening.
+11. H5 virulence marker screening when applicable.
+12. Full protein mutation calling against `RefSeq NC_* + GFF3` (`Step 10b`).
+13. Coinfection / subtype mixing analysis.
+14. Final dashboard and surveillance output generation.
 
-### 3. Current implementation status
-The following modules are already implemented and tested:
-
+## 3. Current implementation status
+The following modules are implemented and validated in the current Nextflow version:
 - sample discovery;
+- execution planning;
 - `FastQC`;
 - `fastp`;
 - `Filtlong`;
 - host depletion with `Bowtie2` and `minimap2`;
-- `IRMA` short and long;
-- segment extraction;
-- `assembly_qc` and `samtools depth`;
+- `IRMA` short and long branches;
+- segment extraction and segment merging;
+- assembly QC and `samtools depth` summaries;
 - `BLAST` typing;
 - `Nextclade`;
-- canonical `iVar` workflow;
-- `Medaka`;
-- antiviral resistance;
-- H5 virulence;
-- `Step 10b` (`RefSeq + GFF3`);
-- coinfection;
-- surveillance outputs.
+- canonical short-read calling with `iVar`;
+- canonical long-read calling with `Medaka`;
+- antiviral resistance analysis;
+- H5 virulence analysis;
+- full protein mutation calling (`Step 10b`);
+- coinfection analysis;
+- MultiQC aggregation;
+- interactive HTML dashboard and surveillance output generation.
 
-### 4. Minimum requirements
+## 4. Requirements
 Recommended environment:
-
-- Linux / Ubuntu or WSL;
-- working `Nextflow` installation;
-- **Docker** or **Singularity / Apptainer** installed;
-- internet access on first run for image and database downloads;
-- at least 8 GB RAM for small tests;
+- Linux, Ubuntu, or WSL;
+- `Nextflow` installed and working;
+- either `Docker` or `Singularity / Apptainer` installed;
+- internet access on the first run for database and image downloads;
+- at least 8 GB RAM for very small tests;
 - more memory and CPUs for full runs.
 
-### 5. Quick installation
-#### 5.1. Clone or copy the project
-Place the project in a working directory, for example:
-
+## 5. Installation and setup
+### 5.1. Clone the repository
 ```bash
-/home/user/MK_Flu-Pipe-nextflow
+git clone https://github.com/nascimento-jean/MK-FluPipe_NF.git
+cd MK-FluPipe_NF
 ```
 
-#### 5.2. Confirm Nextflow
+### 5.2. Confirm Nextflow
 ```bash
 nextflow -version
 ```
 
-#### 5.3. Choose a container backend
-You may use one of the following:
+### 5.3. What is versioned in GitHub and what is generated later
+The GitHub repository stores the workflow source code, documentation, container build recipes, and helper scripts.
 
-- **Docker**
-- **Singularity / Apptainer**
-
-#### 5.4. What is stored in GitHub and what is generated later
-The GitHub repository does **not** store:
-
+The repository does **not** store:
 - prebuilt Docker images;
-- Singularity `.sif` files;
-- databases under `mk_flupipe_db/`;
-- execution outputs, caches, or `work/` directories.
+- prebuilt Singularity `.sif` files;
+- downloaded databases under `mk_flupipe_db/`;
+- execution outputs;
+- `work/` directories or caches.
 
-After `git clone`, the expected workflow is:
+After `git clone`, the normal flow is:
+1. build the local workflow images;
+2. run the pipeline;
+3. let the pipeline download or rebuild the required databases automatically.
 
-1. enter the project directory;
-2. build the local images using the scripts in `containers/`;
-3. run the pipeline;
-4. let the pipeline automatically download or recreate the required databases.
-
-### 6. Container strategy
-The workflow is configured around **3 image groups**:
-
+## 6. Container strategy
+The workflow currently uses three container groups:
 - `irma_tools`
-  - automatically uses `cdcgov/irma:v1.3.2`
+  - resolved automatically to `cdcgov/irma:v1.3.2`;
 - `mk_flu_tools`
-  - local image with the main workflow stack
+  - local image with the main workflow tool stack;
 - `medaka_tools`
-  - local image for `Medaka`-dependent routines
+  - local image with Medaka-related tools.
 
-#### 6.1. Build local Docker images
-From the project root:
-
+### 6.1. Build local Docker images
 ```bash
 bash containers/build_docker_images.sh
 ```
 
 This creates:
-
 - `mk-flu-pipe/mk_flu_tools:local`
 - `mk-flu-pipe/medaka_tools:local`
 
-#### 6.2. Build Singularity / Apptainer images
-After the Docker images are available:
-
+### 6.2. Build local Singularity / Apptainer images
 ```bash
 bash containers/build_singularity_images.sh
 ```
 
-This creates by default:
-
+This creates:
 - `containers/sif/mk_flu_tools_local.sif`
 - `containers/sif/medaka_tools_local.sif`
 
-### 7. How to run the pipeline
-#### 7.1. Recommended profiles
-Use the base `linux` profile together with the desired backend:
-
+## 7. Running the pipeline
+### 7.1. Recommended profiles
+Use the base `linux` profile together with one execution backend:
 - `-profile linux,docker`
 - `-profile linux,singularity`
 
-The `wsl` and `ubuntu` profiles remain available as compatibility aliases, but `linux` is the recommended one.
+The `wsl` and `ubuntu` profiles remain as compatibility aliases, but `linux` is the recommended profile.
 
-#### 7.2. Example: short reads with Docker
+### 7.2. Example: short reads with Docker
 ```bash
 nextflow run main.nf \
   -resume \
@@ -480,7 +179,7 @@ nextflow run main.nf \
   --run_fullvarcall true
 ```
 
-#### 7.3. Example: long reads with Singularity
+### 7.3. Example: long reads with Singularity
 ```bash
 nextflow run main.nf \
   -resume \
@@ -499,11 +198,11 @@ nextflow run main.nf \
   --run_fullvarcall true
 ```
 
-#### 7.4. Example with resource control
+### 7.4. Example with resource control
 ```bash
 nextflow run main.nf \
   -resume \
-  -profile linux,docker \
+  -profile linux,singularity \
   --input_dir /path/to/FLU/ \
   --output_dir mk-flupipe_results \
   --irma_module FLU-utr \
@@ -512,81 +211,183 @@ nextflow run main.nf \
   --queue_size 4
 ```
 
-### 8. Main parameters
+## 8. Main parameters
 | Parameter | Description |
 |---|---|
-| `--input_dir` | Folder containing the input FASTQ/FASTQ.GZ files |
+| `--input_dir` | Folder containing the input FASTQ / FASTQ.GZ files |
 | `--output_dir` | Folder where results will be written |
-| `--irma_module` | IRMA module, e.g. `FLU-utr` or `FLU-minion` |
-| `--seq_type` | `auto`, `long`, `short`, etc. |
+| `--irma_module` | IRMA module such as `FLU-utr` or `FLU-minion` |
+| `--seq_type` | `auto`, `short`, or `long` |
 | `--host_depletion` | Enables or disables host depletion |
-| `--run_ivar` | Enables canonical `iVar` variant calling (short) |
-| `--run_medaka` | Enables `Medaka` variant calling (long) |
+| `--run_ivar` | Enables canonical `iVar` calling for short reads |
+| `--run_medaka` | Enables canonical `Medaka` calling for long reads |
 | `--run_antiviral` | Enables antiviral resistance analysis |
 | `--run_h5_virulence` | Enables H5 virulence analysis |
-| `--run_fullvarcall` | Enables `Step 10b` using `RefSeq + GFF3` |
+| `--run_fullvarcall` | Enables `Step 10b` full protein mutation calling |
 | `--max_cpus` | Global CPU cap per process |
 | `--max_memory` | Global memory cap per process |
-| `--queue_size` | Maximum number of local tasks in parallel |
+| `--queue_size` | Maximum number of concurrent local tasks |
 
-### 9. Output structure
-Main output folders usually include:
+A sample parameter file is available in:
+```text
+params.example.yml
+```
 
-- `qc_reports/`
-- `preprocessed_reads/`
-- `depleted_reads/`
-- `irma_runs_short/` or `irma_runs_long/`
-- `assembly_final/`
-- `variant_calls/`
-- `variant_calls_canonical_long/`
-- `full_variant_calls/`
-- `depth_per_position/`
-- `Surveillance_Outputs/`
+## 9. Outputs
+This section summarizes the outputs generated by the pipeline and what each one contains.
 
-Common files of interest:
+### 9.1. Top-level folders created under `--output_dir`
+| Path | What it contains |
+|---|---|
+| `bootstrap/` | Run planning files such as discovered sample tables and run metadata. |
+| `qc_reports/` | QC outputs and tabular QC summaries used by the dashboard and MultiQC. |
+| `preprocessed_reads/` | Reads after `fastp` or `Filtlong`. |
+| `depleted_reads/` | Reads after host depletion with `Bowtie2` or `minimap2`. |
+| `irma_runs_short/` | Per-sample IRMA short-read run directories. Present only for short-read runs. |
+| `irma_runs_long/` | Per-sample IRMA long-read run directories. Present only for long-read runs. |
+| `assembly_final/` | Final consensus assemblies, merged segment FASTA files, typing, clade, resistance, H5, and coinfection outputs. |
+| `depth_per_position/` | Per-sample depth tables generated from final alignments. |
+| `variant_calls/` | Canonical variant calling outputs from `iVar` or Medaka variant workflows. |
+| `variant_calls_canonical_long/` | Long-read canonical Medaka outputs. Present only for long-read runs with `--run_medaka true`. |
+| `full_variant_calls/` | Full protein mutation outputs generated in `Step 10b`. |
+| `Surveillance_Outputs/` | Final dashboard, final integrated TSV files, run summaries, MultiQC copy, and multi-sample FASTA outputs. |
+| `legacy_bridge/` | Optional outputs only when `--run_legacy_bridge true` is used. |
 
-- `assembly_final/blast_results/blast_typing_summary.tsv`
-- `assembly_final/nextclade_results/nextclade_summary.tsv`
-- `assembly_final/antiviral_resistance/antiviral_resistance.tsv`
-- `assembly_final/h5_virulence/h5_virulence_markers.tsv`
-- `assembly_final/coinfection/coinfection_report.tsv`
-- `full_variant_calls/all_samples_protein_mutations.tsv`
-- `Surveillance_Outputs/surveillance_report.html`
-- `Surveillance_Outputs/multisample_consensus.fasta`
+### 9.2. `qc_reports/`
+| Path | What it contains |
+|---|---|
+| `qc_reports/fastqc_raw/` | Raw `FastQC` output folders for each sample. |
+| `qc_reports/fastp/` | `fastp` HTML and JSON reports. Present for short-read runs. |
+| `qc_reports/filtlong/` | `Filtlong` statistics tables. Present for long-read runs. |
+| `qc_reports/host_depletion_bowtie2/` | Host depletion statistics tables for short-read runs. |
+| `qc_reports/host_depletion_minimap2/` | Host depletion statistics tables for long-read runs. |
+| `qc_reports/assembly_qc/` | Per-sample assembly QC tables generated from extracted segments. |
+| `qc_reports/samtools_depth/` | Per-sample depth summary tables generated from `samtools depth`. |
+| `qc_reports/multiqc/` | Full `MultiQC` report folder. |
 
-### 10. Databases downloaded automatically
-The workflow recreates and populates `mk_flupipe_db/` automatically as needed. Resources include:
+### 9.3. `assembly_final/`
+| Path | What it contains |
+|---|---|
+| `assembly_final/*.fasta` | Final normalized consensus FASTA files copied from IRMA outputs. Degenerate bases are converted to `N`. |
+| `assembly_final/segments/` | Single-segment FASTA files and merged multi-sample segment FASTA files. |
+| `assembly_final/assembly_qc_report.tsv` | Merged assembly QC summary across samples. |
+| `assembly_final/depth_summary.tsv` | Merged depth summary across samples. |
+| `assembly_final/blast_results/blast_typing_summary.tsv` | BLAST-based HA / NA typing summary. |
+| `assembly_final/nextclade_results/nextclade_summary.tsv` | Nextclade clade, dataset, and QC summary. |
+| `assembly_final/antiviral_resistance/antiviral_resistance.tsv` | Antiviral resistance calls based on canonical references. |
+| `assembly_final/h5_virulence/h5_virulence_markers.tsv` | H5 virulence marker results when H5 is detected. |
+| `assembly_final/coinfection/coinfection_report.tsv` | Coinfection and subtype mixing summary per sample. |
 
-- human genome / index for host depletion;
-- influenza `BLAST` database;
-- `Nextclade` datasets;
+### 9.4. Variant and mutation outputs
+| Path | What it contains |
+|---|---|
+| `variant_calls/` | Canonical variant calling outputs from `iVar` or Medaka variant runs. File types depend on branch and caller. |
+| `variant_calls_canonical_long/` | Long-read canonical Medaka outputs used for downstream interpretation. |
+| `full_variant_calls/*.fullvarcall` | Per-sample full protein mutation reports from `Step 10b`. |
+| `full_variant_calls/all_samples_protein_mutations.tsv` | Consolidated protein mutation table across all processed samples. |
+
+### 9.5. Final dashboard and surveillance outputs
+`Surveillance_Outputs/` is the main delivery folder for end users.
+
+| Path | What it contains |
+|---|---|
+| `Surveillance_Outputs/surveillance_report.html` | Interactive final HTML dashboard with tabs for overview, QC, typing, resistance, coinfection, protein mutations, and downloads. |
+| `Surveillance_Outputs/multiqc_report.html` | A copy of the full MultiQC report for direct opening from the final output folder. |
+| `Surveillance_Outputs/typing_results.tsv` | Integrated typing table combining BLAST, Nextclade, assembly QC, and hit metadata. |
+| `Surveillance_Outputs/preprocessing_summary.tsv` | `fastp` or `Filtlong` summary table used by the dashboard preprocessing section. |
+| `Surveillance_Outputs/host_depletion_summary.tsv` | Read count and retention summary before and after host depletion. |
+| `Surveillance_Outputs/run_summary.tsv` | Compact integrated run summary per sample. |
+| `Surveillance_Outputs/run_summary.json` | JSON version of the integrated run summary. |
+| `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA. Degenerate bases are converted to `N`. |
+| `Surveillance_Outputs/coinfection/coinfection_report.tsv` | Local copy of the final coinfection summary used by the dashboard. |
+| `Surveillance_Outputs/full_variant_calls/all_samples_protein_mutations.tsv` | Local copy of the consolidated protein mutation table used by the dashboard. |
+| `Surveillance_Outputs/README_outputs.txt` | Plain-text explanation of the main final outputs. |
+
+### 9.6. Optional outputs
+| Path | What it contains |
+|---|---|
+| `legacy_bridge/` | Outputs created only when the optional legacy Bash bridge is enabled. |
+| `variant_calls_canonical_long/` | Only generated for long-read Medaka runs. |
+| `qc_reports/filtlong/` | Only generated for long-read runs. |
+| `qc_reports/fastp/` | Only generated for short-read runs. |
+| `depleted_reads/bowtie2/` and `qc_reports/host_depletion_bowtie2/` | Only generated for short-read runs when host depletion is enabled. |
+| `depleted_reads/minimap2/` and `qc_reports/host_depletion_minimap2/` | Only generated for long-read runs when host depletion is enabled. |
+
+## 10. Databases and cache behavior
+The workflow automatically recreates and populates `mk_flupipe_db/` as needed. This includes:
+- the human genome and host depletion index;
+- the Influenza BLAST database;
+- Nextclade datasets;
 - canonical references;
-- `RefSeq NC_*` references and `GFF3` files;
-- antiviral resistance marker database.
+- `RefSeq NC_*` references and `GFF3` files for `Step 10b`;
+- antiviral resistance marker databases.
 
-If `mk_flupipe_db/` is deleted, it is rebuilt on the next run.
+If `mk_flupipe_db/` is deleted, it will be rebuilt on the next run.
 
-### 11. Frequently asked questions
-#### Does the pipeline require Conda?
-No. The recommended strategy is now **Docker** and **Singularity**.
+## 11. GitHub releases and packages
+The repository already hosts the workflow source code. The remaining GitHub-facing pieces are:
+- a versioned **Release**;
+- published **container packages**.
 
-#### Does IRMA need to be installed on the host system?
-Not necessarily. The workflow uses:
+### 11.1. Release workflow
+A typical first release flow is:
+```bash
+git add README.md docs/mk_flupipe_nextflow_workflow.svg .github/workflows/publish-ghcr.yml
+git commit -m "Docs: refresh README and workflow diagram"
+git push origin main
 
+git tag -a v1.0.0 -m "MK Flu-Pipe Nextflow v1.0.0"
+git push origin v1.0.0
+```
+
+Then open GitHub and create the Release from tag `v1.0.0`.
+
+Recommended release assets or notes:
+- workflow version and highlights;
+- validated profiles (`linux,docker`, `linux,singularity`);
+- validated short-read and long-read support;
+- updated dashboard and MultiQC integration;
+- any limitations still under active refinement.
+
+### 11.2. Packages via GitHub Container Registry (GHCR)
+This repository now includes a GitHub Actions workflow in:
+```text
+.github/workflows/publish-ghcr.yml
+```
+
+It publishes two Docker images to GitHub Container Registry:
+- `ghcr.io/<owner>/mk-flupipe-nf-mk-flu-tools`
+- `ghcr.io/<owner>/mk-flupipe-nf-medaka-tools`
+
+The workflow can be triggered in two ways:
+- automatically when you push a tag such as `v1.0.0`;
+- manually from the **Actions** tab using **Run workflow**.
+
+Once the workflow succeeds, those images will appear in the repository's **Packages** section on GitHub.
+
+## 12. Frequently asked questions
+### Does the pipeline require Conda?
+No. The recommended execution strategy is based on Docker and Singularity / Apptainer.
+
+### Does IRMA need to be installed on the host system?
+No. The workflow uses:
 ```text
 cdcgov/irma:v1.3.2
 ```
 
-#### Can I run this on WSL?
+### Can I run this on WSL?
 Yes. The `linux` profile has been validated on WSL.
 
-#### Can I run this on native Ubuntu?
+### Can I run this on native Ubuntu?
 Yes. The same `linux` profile is intended for native Ubuntu.
 
-#### What happens to degenerate bases?
-Final sequences used in:
-- `assembly_final/`
-- `Surveillance_Outputs/multisample_consensus.fasta`
-- `Surveillance_Outputs/GISAID_ready/gisaid_sequences.fasta`
+### Do I have to launch the workflow from inside the repository directory?
+No. You may run the workflow by pointing `nextflow run` to the project directory or directly to `main.nf`, as long as you provide valid input and output paths.
+
+### What happens to degenerate bases?
+Final sequences in:
+- `assembly_final/`;
+- `Surveillance_Outputs/multisample_consensus.fasta`;
+- optional downstream FASTA exports;
 
 are normalized so that degenerate bases are converted to `N`, matching the original workflow logic.
