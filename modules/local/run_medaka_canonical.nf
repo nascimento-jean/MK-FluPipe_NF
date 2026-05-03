@@ -2,7 +2,6 @@ process RUN_MEDAKA_CANONICAL {
     tag { meta.id }
     label 'medaka_tools'
     publishDir "${params.output_dir}", pattern: 'variant_calls_canonical_long/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/medaka_canonical", pattern: 'reports/*', mode: 'copy', overwrite: true
 
     input:
     val ready
@@ -21,8 +20,6 @@ process RUN_MEDAKA_CANONICAL {
     : > "reports/${meta.id}.medaka_canonical.log"
 
     if [[ "${flu_type}" == "B" || "${flu_type}" == "Not determined" || -z "${subtype_na}" || "${subtype_na}" == "nd" ]]; then
-        printf 'sample_id\tflu_type\tsubtype_HA\tsubtype_NA\tgenes_called\n' > "variant_calls_canonical_long/${meta.id}/${meta.id}_medaka_canonical_manifest.tsv"
-        printf '%s\t%s\t%s\t%s\t0\n' "${meta.id}" "${flu_type}" "${subtype_ha}" "${subtype_na}" >> "variant_calls_canonical_long/${meta.id}/${meta.id}_medaka_canonical_manifest.tsv"
         printf 'Skipping canonical Medaka for %s (type=%s, NA=%s)\n' "${meta.id}" "${flu_type}" "${subtype_na}" > "reports/${meta.id}.medaka_canonical.log"
         exit 0
     fi
@@ -67,8 +64,5 @@ process RUN_MEDAKA_CANONICAL {
 
         [[ -f "\$medaka_out/medaka.annotated.vcf" ]] && called=\$((called + 1))
     done
-
-    printf 'sample_id\tflu_type\tsubtype_HA\tsubtype_NA\tgenes_called\n' > "variant_calls_canonical_long/${meta.id}/${meta.id}_medaka_canonical_manifest.tsv"
-    printf '%s\t%s\t%s\t%s\t%s\n' "${meta.id}" "${flu_type}" "${subtype_ha}" "${subtype_na}" "\$called" >> "variant_calls_canonical_long/${meta.id}/${meta.id}_medaka_canonical_manifest.tsv"
     """
 }

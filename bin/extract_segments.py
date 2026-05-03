@@ -67,15 +67,6 @@ def main():
             for header, sequence in entries:
                 handle.write(f"{header}\n{sequence}\n")
 
-    summary_file = output_dir / f"{args.sample_id}_segments_manifest.tsv"
-    with summary_file.open("w", encoding="utf-8") as handle:
-        handle.write("sample_id\tsegment\tentries\toutput_file\n")
-        for segment in range(1, 9):
-            sample_file = output_dir / f"single_segment{segment}" / f"{args.sample_id}_segment_{segment}.fasta"
-            handle.write(
-                f"{args.sample_id}\t{segment}\t{len(segment_entries[segment])}\t{sample_file.as_posix()}\n"
-            )
-
 
 if __name__ == "__main__":
     main()

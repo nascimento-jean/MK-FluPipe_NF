@@ -15,9 +15,19 @@ NEXTCLADE_DATASETS = {
     "H5": "community/moncla-lab/iav-h5/ha/all-clades",
 }
 
+MISSING = {"", "N/A", "ERRO", "unassigned", "-", "â€”", "Ã¢â‚¬â€", "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
+
+
+def clean_text(value):
+    return (value or "").strip()
+
+
+def is_missing(value):
+    return clean_text(value) in MISSING
+
 
 def get_nextclade_key(flu_type: str, subtype_ha: str):
-    subtype = (subtype_ha or "").upper()
+    subtype = clean_text(subtype_ha).upper()
     if flu_type == "A":
         if subtype.startswith("H1N1") or subtype == "H1":
             return "H1N1"
@@ -79,57 +89,52 @@ def ensure_dataset(dataset_key: str, datasets_root: Path, max_days: int, log_pat
 
 def parse_nextclade_summary(tsv_path: Path, flu_type: str):
     if not tsv_path.exists() or tsv_path.stat().st_size == 0:
-        return {
-            "clade_display": "â€”",
-            "qc_status": "N/A",
-        }
+        return {"clade_display": "-", "qc_status": "N/A"}
 
     with tsv_path.open("r", encoding="utf-8", errors="ignore") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         row = next(reader, None)
         if not row:
-            return {
-                "clade_display": "â€”",
-                "qc_status": "N/A",
-            }
+            return {"clade_display": "-", "qc_status": "N/A"}
 
-    clade = row.get("clade", "") or ""
-    legacy = row.get("legacy-clade", "") or ""
-    legacy_vic = row.get("legacy-clade-vic", "") or ""
-    legacy_yam = row.get("legacy-clade-yam", "") or ""
-    lineage = row.get("lineage", "") or ""
-    qc_status = row.get("qc.overallStatus", "") or "N/A"
+    clade = clean_text(row.get("clade", ""))
+    short_clade = clean_text(row.get("short-clade", ""))
+    subclade = clean_text(row.get("subclade", ""))
+    legacy = clean_text(row.get("legacy-clade", ""))
+    legacy_vic = clean_text(row.get("legacy-clade-vic", ""))
+    legacy_yam = clean_text(row.get("legacy-clade-yam", ""))
+    lineage = clean_text(row.get("lineage", ""))
+    qc_status = clean_text(row.get("qc.overallStatus", "")) or "N/A"
 
-    if clade in {"", "N/A", "ERRO"}:
-        return {
-            "clade_display": "â€”",
-            "qc_status": qc_status,
-        }
+    primary_clade = clade
+    if is_missing(primary_clade) and not is_missing(short_clade):
+        primary_clade = short_clade
+    if is_missing(primary_clade) and not is_missing(subclade):
+        primary_clade = subclade
+
+    if is_missing(primary_clade):
+        return {"clade_display": "-", "qc_status": qc_status}
 
     if flu_type == "B":
         b_legacy = ""
-        if legacy_vic not in {"", "unassigned", "N/A"}:
+        if not is_missing(legacy_vic):
             b_legacy = legacy_vic
-        elif legacy_yam not in {"", "unassigned", "N/A"}:
+        elif not is_missing(legacy_yam):
             b_legacy = legacy_yam
 
         if b_legacy:
-            clade_display = f"{b_legacy}/{lineage}" if lineage not in {"", "N/A", b_legacy} else b_legacy
+            clade_display = f"{primary_clade}/{b_legacy}" if primary_clade != b_legacy else primary_clade
+        elif not is_missing(lineage) and lineage != primary_clade:
+            clade_display = f"{primary_clade}/{lineage}"
         else:
-            clade_display = f"{clade}/{lineage}" if lineage not in {"", "N/A"} else clade
+            clade_display = primary_clade
     else:
-        if clade not in {"", "N/A", "unassigned"} and legacy not in {"", "N/A", "unassigned"}:
-            clade_display = f"{clade}/{legacy}"
-        elif clade not in {"", "N/A", "unassigned"}:
-            clade_display = clade
+        if not is_missing(legacy) and legacy != primary_clade:
+            clade_display = f"{primary_clade}/{legacy}"
         else:
-            clade_display = legacy if legacy not in {"", "N/A", "unassigned"} else "â€”"
+            clade_display = primary_clade
 
-    return {
-        "clade_display": clade_display,
-        "qc_status": qc_status,
-    }
-
+    return {"clade_display": clade_display or "-", "qc_status": qc_status}
 
 def main():
     parser = argparse.ArgumentParser(description="Run Nextclade per sample based on BLAST typing")
@@ -159,11 +164,10 @@ def main():
     rows = []
     with Path(args.blast_summary).open("r", encoding="utf-8", errors="ignore") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
-        for row in reader:
-            rows.append(row)
+        rows.extend(reader)
 
     summary_path = output_dir / "nextclade_summary.tsv"
-    with summary_path.open("w", encoding="utf-8") as summary:
+    with summary_path.open("w", encoding="utf-8", newline="") as summary:
         summary.write("sample\ttype_blast\tsubtype_HA\tsubtype_NA\tnextclade_dataset\tclade_display\tqc_status\n")
 
         for row in rows:
@@ -180,7 +184,7 @@ def main():
                     f"{sample}\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\n",
                     encoding="utf-8",
                 )
-                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\tN/A\tâ€”\tN/A\n")
+                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\tN/A\t-\tN/A\n")
                 continue
 
             segment4 = segment4_map.get(sample)
@@ -190,7 +194,7 @@ def main():
                     f"{sample}\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\n",
                     encoding="utf-8",
                 )
-                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\t{dataset_key}\tâ€”\tN/A\n")
+                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\t{dataset_key}\t-\tN/A\n")
                 continue
 
             dataset_dir = ensure_dataset(dataset_key, datasets_root, args.max_days, log_path)
@@ -220,7 +224,7 @@ def main():
                     f"{sample}\tERRO\tERRO\tERRO\tERRO\tERRO\tERRO\tERRO\n",
                     encoding="utf-8",
                 )
-                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\t{dataset_key}\tâ€”\tERRO\n")
+                summary.write(f"{sample}\t{flu_type}\t{subtype_ha}\t{subtype_na}\t{dataset_key}\t-\tERRO\n")
                 continue
 
             parsed = parse_nextclade_summary(sample_out, flu_type)

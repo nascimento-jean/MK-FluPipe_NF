@@ -2,8 +2,7 @@ process RUN_FASTP {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}/preprocessed_reads/fastp", pattern: 'trimmed/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/fastp", pattern: 'reports/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/fastp", pattern: '*_fastp_manifest.tsv', mode: 'copy', overwrite: true
+    publishDir "${params.output_dir}/qc_reports/fastp", pattern: 'reports/*.fastp.*', mode: 'copy', overwrite: true
 
     input:
     val ready

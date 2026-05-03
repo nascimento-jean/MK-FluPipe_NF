@@ -7,12 +7,6 @@ from pathlib import Path
 
 
 FASTQ_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
-PAIRED_PATTERNS = [
-    ("_R1", "_R2"),
-    (".R1", ".R2"),
-    ("_1", "_2"),
-    (".1", ".2"),
-]
 
 
 def parse_args():
@@ -35,10 +29,40 @@ def strip_fastq_suffix(name: str) -> str:
     return name
 
 
-def paired_match(stem: str):
-    for read1, read2 in PAIRED_PATTERNS:
-        if read1 in stem:
-            return stem.replace(read1, ""), read1, read2
+def classify_short_fastq(path: Path):
+    name = path.name
+
+    # Illumina/BaseSpace style: SAMPLE_L001_R1_001.fastq.gz
+    for suffix in FASTQ_SUFFIXES:
+        token = f"_L001_R1_001{suffix}"
+        if name.endswith(token):
+            sample_id = name[: -len(token)]
+            mate_name = f"{sample_id}_L001_R2_001{suffix}"
+            return sample_id, mate_name
+
+    # SRA/ENA style: SAMPLE_1.fastq.gz
+    for suffix in FASTQ_SUFFIXES:
+        token = f"_1{suffix}"
+        if name.endswith(token):
+            sample_id = name[: -len(token)]
+            mate_name = f"{sample_id}_2{suffix}"
+            return sample_id, mate_name
+
+    # Generic paired-end style: SAMPLE_R1_XXX.fastq.gz or SAMPLE_R1.fastq.gz
+    for suffix in FASTQ_SUFFIXES:
+        token = f"_R1{suffix}"
+        if name.endswith(token):
+            sample_id = name[: -len(token)]
+            mate_name = f"{sample_id}_R2{suffix}"
+            return sample_id, mate_name
+
+        mid = "_R1_"
+        if mid in name and name.endswith(suffix):
+            prefix, rest = name.rsplit(mid, 1)
+            sample_id = prefix
+            mate_name = f"{prefix}_R2_{rest}"
+            return sample_id, mate_name
+
     return None
 
 
@@ -54,10 +78,9 @@ def discover(input_dir: Path, seq_type: str):
         stem = strip_fastq_suffix(path.name)
 
         if seq_type in {"auto", "short_paired"}:
-            match = paired_match(stem)
+            match = classify_short_fastq(path)
             if match:
-                sample_id, read1_token, read2_token = match
-                mate_name = path.name.replace(read1_token, read2_token, 1)
+                sample_id, mate_name = match
                 mate_path = input_dir / mate_name
                 if mate_path.exists():
                     consumed.add(path)
@@ -133,4 +156,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

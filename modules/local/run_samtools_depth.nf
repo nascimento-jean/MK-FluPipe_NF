@@ -2,7 +2,7 @@ process RUN_SAMTOOLS_DEPTH {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}", pattern: 'depth_per_position/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/samtools_depth/reports", pattern: '*.depth_stats.tsv', mode: 'copy', overwrite: true
+    publishDir "${params.output_dir}/qc_reports/samtools_depth", pattern: '*.depth_stats.tsv', mode: 'copy', overwrite: true
 
     input:
     val ready

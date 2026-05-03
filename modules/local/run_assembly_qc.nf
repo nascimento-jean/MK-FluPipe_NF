@@ -1,7 +1,7 @@
 process RUN_ASSEMBLY_QC {
     tag { meta.id }
     label 'mk_flu_tools'
-    publishDir "${params.output_dir}/qc_reports/assembly_qc/reports", pattern: '*.assembly_qc.tsv', mode: 'copy', overwrite: true
+    publishDir "${params.output_dir}/qc_reports/assembly_qc", pattern: '*.assembly_qc.tsv', mode: 'copy', overwrite: true
 
     input:
     tuple val(meta), path(irma_dir), path(consensus_fasta)

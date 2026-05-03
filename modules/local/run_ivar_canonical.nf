@@ -2,7 +2,6 @@ process RUN_IVAR_CANONICAL {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}", pattern: 'variant_calls/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/ivar_canonical", pattern: 'reports/*', mode: 'copy', overwrite: true
 
     input:
     val ready
@@ -20,8 +19,6 @@ process RUN_IVAR_CANONICAL {
     mkdir -p "variant_calls/${meta.id}" reports
 
     if [[ "${flu_type}" == "B" || "${flu_type}" == "Not determined" || -z "${subtype_na}" || "${subtype_na}" == "nd" ]]; then
-        printf 'sample_id\tflu_type\tsubtype_HA\tsubtype_NA\tgenes_called\n' > "variant_calls/${meta.id}/${meta.id}_ivar_manifest.tsv"
-        printf '%s\t%s\t%s\t%s\t0\n' "${meta.id}" "${flu_type}" "${subtype_ha}" "${subtype_na}" >> "variant_calls/${meta.id}/${meta.id}_ivar_manifest.tsv"
         printf 'Skipping canonical iVar for %s (type=%s, NA=%s)\n' "${meta.id}" "${flu_type}" "${subtype_na}" > "reports/${meta.id}.ivar.log"
         exit 0
     fi
@@ -67,8 +64,5 @@ process RUN_IVAR_CANONICAL {
             called=\$((called + 1))
         fi
     done
-
-    printf 'sample_id\tflu_type\tsubtype_HA\tsubtype_NA\tgenes_called\n' > "variant_calls/${meta.id}/${meta.id}_ivar_manifest.tsv"
-    printf '%s\t%s\t%s\t%s\t%s\n' "${meta.id}" "${flu_type}" "${subtype_ha}" "${subtype_na}" "\$called" >> "variant_calls/${meta.id}/${meta.id}_ivar_manifest.tsv"
     """
 }

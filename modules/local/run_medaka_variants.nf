@@ -2,7 +2,6 @@ process RUN_MEDAKA_VARIANTS {
     tag { meta.id }
     label 'medaka_tools'
     publishDir "${params.output_dir}", pattern: 'variant_calls/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/medaka", pattern: 'reports/*', mode: 'copy', overwrite: true
 
     input:
     val ready
@@ -79,8 +78,5 @@ process RUN_MEDAKA_VARIANTS {
     if [[ "\$bam_seen" -eq 0 ]]; then
         printf 'No BAM files found for %s in %s\n' "${meta.id}" "${irma_dir}" >> "reports/${meta.id}.medaka.log"
     fi
-
-    printf 'sample_id\tsegments_called\n' > "variant_calls/${meta.id}/${meta.id}_medaka_manifest.tsv"
-    printf '%s\t%s\n' "${meta.id}" "\$called" >> "variant_calls/${meta.id}/${meta.id}_medaka_manifest.tsv"
     """
 }

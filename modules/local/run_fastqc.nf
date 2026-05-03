@@ -9,7 +9,6 @@ process RUN_FASTQC {
 
     output:
     tuple val(meta), path("${meta.id}_fastqc"), emit: report_dirs
-    tuple val(meta), path("${meta.id}_fastqc_manifest.tsv"), emit: manifests
 
     script:
     def readsArg = reads.collect { "\"${it}\"" }.join(' ')
@@ -21,15 +20,5 @@ process RUN_FASTQC {
         --threads ${task.cpus} \
         --outdir "${meta.id}_fastqc" \
         ${readsArg}
-
-    {
-        printf 'sample_id\\tlayout\\tseq_type\\tread_count\\treport_dir\\n'
-        printf '%s\\t%s\\t%s\\t%s\\t%s\\n' \
-            "${meta.id}" \
-            "${meta.layout}" \
-            "${meta.seq_type}" \
-            "${reads.size()}" \
-            "${meta.id}_fastqc"
-    } > "${meta.id}_fastqc_manifest.tsv"
     """
 }

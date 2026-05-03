@@ -266,11 +266,7 @@ def main():
 
 
 def write_manifest(output_dir: Path, sample_id: str, flu_type: str, subtype_ha: str, subtype_na: str, segments_done: int, segments_skipped: int):
-    manifest_path = output_dir / f"{sample_id}_fullvarcall_manifest.tsv"
-    with manifest_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["sample_id", "flu_type", "subtype_HA", "subtype_NA", "segments_done", "segments_skipped"])
-        writer.writerow([sample_id, flu_type, subtype_ha, subtype_na, segments_done, segments_skipped])
+    return
 
 
 if __name__ == "__main__":

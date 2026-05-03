@@ -2,8 +2,7 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}/depleted_reads/bowtie2", pattern: 'depleted/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/host_depletion_bowtie2", pattern: 'reports/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/host_depletion_bowtie2", pattern: '*_host_depletion_manifest.tsv', mode: 'copy', overwrite: true
+    publishDir "${params.output_dir}/qc_reports/host_depletion_bowtie2", pattern: 'reports/*.host_depletion.stats.tsv', mode: 'copy', overwrite: true
 
     input:
     val ready
@@ -36,10 +35,14 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
             -S /dev/null \
             2> "reports/${meta.id}.bowtie2_host_depletion.log" || true
 
-        [ -f "depleted/${meta.id}_depleted_R1.fastq.gz" ] || gzip -c < /dev/null > "depleted/${meta.id}_depleted_R1.fastq.gz"
-        [ -f "depleted/${meta.id}_depleted_R2.fastq.gz" ] || gzip -c < /dev/null > "depleted/${meta.id}_depleted_R2.fastq.gz"
         [ -f "depleted/${meta.id}_depleted_R_1.fastq.gz" ] && mv "depleted/${meta.id}_depleted_R_1.fastq.gz" "depleted/${meta.id}_depleted_R1.fastq.gz" || true
         [ -f "depleted/${meta.id}_depleted_R_2.fastq.gz" ] && mv "depleted/${meta.id}_depleted_R_2.fastq.gz" "depleted/${meta.id}_depleted_R2.fastq.gz" || true
+
+        # Original pipeline behavior: if depletion yields no usable reads, fall back to trimmed/raw reads.
+        [ -s "depleted/${meta.id}_depleted_R1.fastq.gz" ] || {
+            cp "${reads[0]}" "depleted/${meta.id}_depleted_R1.fastq.gz"
+            cp "${reads[1]}" "depleted/${meta.id}_depleted_R2.fastq.gz"
+        }
 
         python3 "${projectDir}/bin/read_set_stats.py" \
             --sample-id "${meta.id}" \
@@ -50,8 +53,8 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
             --output-tsv "reports/${meta.id}.host_depletion.stats.tsv"
 
         {
-            printf 'sample_id\\tlayout\\tseq_type\\tread1\\tread2\\tlog_file\\tstats_tsv\\n'
-            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \
+            printf 'sample_id\tlayout\tseq_type\tread1\tread2\tlog_file\tstats_tsv\n'
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
                 "${meta.id}" \
                 "${meta.layout}" \
                 "${meta.seq_type}" \
@@ -78,7 +81,8 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
             -S /dev/null \
             2> "reports/${meta.id}.bowtie2_host_depletion.log" || true
 
-        [ -f "depleted/${meta.id}_depleted.fastq.gz" ] || gzip -c < /dev/null > "depleted/${meta.id}_depleted.fastq.gz"
+        # Original pipeline behavior: if depletion yields no usable reads, fall back to trimmed/raw reads.
+        [ -s "depleted/${meta.id}_depleted.fastq.gz" ] || cp "${reads[0]}" "depleted/${meta.id}_depleted.fastq.gz"
 
         python3 "${projectDir}/bin/read_set_stats.py" \
             --sample-id "${meta.id}" \
@@ -89,8 +93,8 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
             --output-tsv "reports/${meta.id}.host_depletion.stats.tsv"
 
         {
-            printf 'sample_id\\tlayout\\tseq_type\\tread1\\tread2\\tlog_file\\tstats_tsv\\n'
-            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \
+            printf 'sample_id\tlayout\tseq_type\tread1\tread2\tlog_file\tstats_tsv\n'
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
                 "${meta.id}" \
                 "${meta.layout}" \
                 "${meta.seq_type}" \
@@ -102,4 +106,3 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
         """
     }
 }
-

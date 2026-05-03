@@ -2,18 +2,15 @@ process RUN_COINFECTION {
     tag 'coinfection'
     label 'mk_flu_tools'
     publishDir "${params.output_dir}/assembly_final", pattern: 'coinfection/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/coinfection", pattern: 'reports/*', mode: 'copy', overwrite: true
 
     input:
-    path irma_dirs
+    path irma_dirs, stageAs: 'input??/*'
 
     output:
     path('coinfection/coinfection_report.tsv'), emit: report
     path('reports/coinfection.log'), emit: log
 
     script:
-    def stagedIrmaDirs = irma_dirs.collect { "\"${it.getFileName().toString()}\"" }.join(' ')
-
     """
     mkdir -p coinfection reports
 
@@ -22,6 +19,6 @@ process RUN_COINFECTION {
         --log-file reports/coinfection.log \
         --minority-freq ${params.minority_freq} \
         --coinfection-pct ${params.coinfection_pct} \
-        ${stagedIrmaDirs}
+        input*/*
     """
 }

@@ -4,17 +4,16 @@ process RUN_MERGE_ASSEMBLY_QC {
     publishDir "${params.output_dir}/assembly_final", pattern: 'assembly_qc_report.tsv', mode: 'copy', overwrite: true
 
     input:
-    path qc_rows
+    path qc_rows, stageAs: 'input??/*'
 
     output:
     path("assembly_qc_report.tsv"), emit: report
 
     script:
-    def stagedQcRows = qc_rows.collect { "\"${it.getFileName().toString()}\"" }.join(' ')
-
     """
-    printf 'sample\tqc_assembly\tqc_detail\n' > assembly_qc_report.tsv
-    for row in ${stagedQcRows}; do
+    printf 'sample	qc_assembly	qc_detail
+' > assembly_qc_report.tsv
+    for row in input*/*; do
         tail -n +2 "\$row" >> assembly_qc_report.tsv
     done
     """

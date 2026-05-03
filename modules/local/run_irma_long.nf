@@ -3,8 +3,6 @@ process RUN_IRMA_LONG {
     label 'irma_tools'
     publishDir "${params.output_dir}", pattern: 'irma_runs_long/*', mode: 'copy', overwrite: true
     publishDir "${params.output_dir}", pattern: 'assembly_final/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/irma_long", pattern: 'reports/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/irma_long", pattern: '*_irma_manifest.tsv', mode: 'copy', overwrite: true
 
     input:
     val ready
@@ -31,7 +29,8 @@ process RUN_IRMA_LONG {
         cat "irma_runs_long/${meta.id}/amended_consensus/"*.fa > "assembly_final/${meta.id}.fasta"
         sed -i '/^>/!s/[^ACTGactg]/N/g' "assembly_final/${meta.id}.fasta"
     else
-        : > "assembly_final/${meta.id}.fasta"
+        echo "IRMA finished but amended_consensus is missing or empty for ${meta.id}" >&2
+        exit 1
     fi
 
     {

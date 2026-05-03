@@ -2,7 +2,6 @@ process RUN_FULLVARCALL_SAMPLE {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}", pattern: 'full_variant_calls/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/full_variant_calls", pattern: 'reports/*', mode: 'copy', overwrite: true
 
     input:
     val ready

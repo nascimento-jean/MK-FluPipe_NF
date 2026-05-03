@@ -2,8 +2,7 @@ process RUN_FILTLONG {
     tag { meta.id }
     label 'mk_flu_tools'
     publishDir "${params.output_dir}/preprocessed_reads/filtlong", pattern: 'filtered/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/filtlong", pattern: 'reports/*', mode: 'copy', overwrite: true
-    publishDir "${params.output_dir}/qc_reports/filtlong", pattern: '*_filtlong_manifest.tsv', mode: 'copy', overwrite: true
+    publishDir "${params.output_dir}/qc_reports/filtlong", pattern: 'reports/*.filtlong.stats.tsv', mode: 'copy', overwrite: true
 
     input:
     val ready

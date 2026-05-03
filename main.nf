@@ -29,6 +29,8 @@ include { PREPARE_INFLUENZA_BLAST_DB } from './modules/local/prepare_influenza_b
 include { RUN_BLAST_TYPING } from './modules/local/run_blast_typing'
 include { PRECHECK_NEXTCLADE } from './modules/local/precheck_nextclade'
 include { RUN_NEXTCLADE } from './modules/local/run_nextclade'
+include { PRECHECK_MULTIQC } from './modules/local/precheck_multiqc'
+include { RUN_MULTIQC } from './modules/local/run_multiqc'
 include { PRECHECK_IVAR_CANONICAL } from './modules/local/precheck_ivar_canonical'
 include { PREPARE_CANONICAL_REFS } from './modules/local/prepare_canonical_refs'
 include { PRECHECK_FULLVARCALL } from './modules/local/precheck_fullvarcall'
@@ -96,6 +98,33 @@ def sampleTuple(row) {
     return tuple(meta, reads)
 }
 
+def normalizeReadSet(reads) {
+    def items = reads instanceof List ? reads.toList() : [reads]
+    return items.sort { a, b -> a.getFileName().toString() <=> b.getFileName().toString() }
+}
+
+def hasUsableReads(meta, reads) {
+    def items = normalizeReadSet(reads)
+    if( meta.layout == 'paired' ) {
+        return items.size() == 2 && items.every { it.exists() && it.size() > 0 }
+    }
+    return items.size() >= 1 && items[0].exists() && items[0].size() > 0
+}
+
+def chooseBestReads(meta, rawReads, trimmedReads, depletedReads = null) {
+    def rawSet = normalizeReadSet(rawReads)
+    def trimmedSet = trimmedReads != null ? normalizeReadSet(trimmedReads) : null
+    def depletedSet = depletedReads != null ? normalizeReadSet(depletedReads) : null
+
+    if( depletedSet != null && hasUsableReads(meta, depletedSet) ) {
+        return depletedSet
+    }
+    if( trimmedSet != null && hasUsableReads(meta, trimmedSet) ) {
+        return trimmedSet
+    }
+    return rawSet
+}
+
 workflow {
     validateParams()
 
@@ -134,12 +163,23 @@ workflow {
             short_reads: meta.seq_type != 'long'
         }
 
+    def irmaConsensus = Channel.empty()
+    def irmaDirs = Channel.empty()
+    def shortReadsForVariants = Channel.empty()
+    def longReadsForVariants = Channel.empty()
+    def multiqcArtifacts = Channel.empty()
+    def dashboardQcArtifacts = Channel.empty()
+
     if( params.run_fastqc ) {
         PRECHECK_FASTQC()
 
         RUN_FASTQC(
             PRECHECK_FASTQC.out.ok,
             routedSamples.short_reads.mix(routedSamples.long_reads)
+        )
+
+        multiqcArtifacts = multiqcArtifacts.mix(
+            RUN_FASTQC.out.report_dirs.map { meta, reportDir -> reportDir }
         )
     }
 
@@ -150,6 +190,13 @@ workflow {
             PRECHECK_FASTP.out.ok,
             routedSamples.short_reads
         )
+
+        multiqcArtifacts = multiqcArtifacts.mix(
+            RUN_FASTP.out.reports.map { meta, report -> report }
+        )
+        dashboardQcArtifacts = dashboardQcArtifacts.mix(
+            RUN_FASTP.out.reports.map { meta, report -> report }
+        )
     }
 
     if( params.seq_type == 'long' ) {
@@ -158,6 +205,13 @@ workflow {
         RUN_FILTLONG(
             PRECHECK_FILTLONG.out.ok,
             routedSamples.long_reads
+        )
+
+        multiqcArtifacts = multiqcArtifacts.mix(
+            RUN_FILTLONG.out.reports.map { meta, report -> report }
+        )
+        dashboardQcArtifacts = dashboardQcArtifacts.mix(
+            RUN_FILTLONG.out.reports.map { meta, report -> report }
         )
     }
 
@@ -174,6 +228,10 @@ workflow {
             PREPARE_HUMAN_BOWTIE2_INDEX.out.index_files,
             RUN_FASTP.out.cleaned_reads
         )
+
+        dashboardQcArtifacts = dashboardQcArtifacts.mix(
+            RUN_HOST_DEPLETION_BOWTIE2.out.reports.map { meta, report -> report }
+        )
     }
 
     if( params.host_depletion && params.seq_type == 'long' ) {
@@ -184,19 +242,40 @@ workflow {
             PREPARE_HUMAN_BOWTIE2_INDEX.out.human_fasta,
             RUN_FILTLONG.out.cleaned_reads
         )
+
+        dashboardQcArtifacts = dashboardQcArtifacts.mix(
+            RUN_HOST_DEPLETION_MINIMAP2.out.reports.map { meta, report -> report }
+        )
     }
 
-    def irmaConsensus = Channel.empty()
-    def irmaDirs = Channel.empty()
-    def shortReadsForVariants = Channel.empty()
-    def longReadsForVariants = Channel.empty()
 
     if( params.seq_type != 'long' ) {
         PRECHECK_IRMA_SHORT()
 
-        def shortReadsForIrma = params.host_depletion
-            ? RUN_HOST_DEPLETION_BOWTIE2.out.depleted_reads
-            : RUN_FASTP.out.cleaned_reads
+        def shortRawById = routedSamples.short_reads
+            .map { meta, reads -> tuple(meta.id, meta, reads) }
+        def shortTrimmedById = RUN_FASTP.out.cleaned_reads
+            .map { meta, reads -> tuple(meta.id, reads) }
+
+        def shortReadsForIrma
+        if( params.host_depletion ) {
+            def shortDepletedById = RUN_HOST_DEPLETION_BOWTIE2.out.depleted_reads
+                .map { meta, reads -> tuple(meta.id, reads) }
+
+            shortReadsForIrma = shortRawById
+                .join(shortTrimmedById)
+                .join(shortDepletedById)
+                .map { sampleId, meta, rawReads, trimmedReads, depletedReads ->
+                    tuple(meta, chooseBestReads(meta, rawReads, trimmedReads, depletedReads))
+                }
+        }
+        else {
+            shortReadsForIrma = shortRawById
+                .join(shortTrimmedById)
+                .map { sampleId, meta, rawReads, trimmedReads ->
+                    tuple(meta, chooseBestReads(meta, rawReads, trimmedReads, null))
+                }
+        }
 
         shortReadsForVariants = shortReadsForIrma
 
@@ -212,9 +291,30 @@ workflow {
     if( params.seq_type == 'long' ) {
         PRECHECK_IRMA_LONG()
 
-        def longReadsForIrma = params.host_depletion
-            ? RUN_HOST_DEPLETION_MINIMAP2.out.depleted_reads
-            : RUN_FILTLONG.out.cleaned_reads
+        def longRawById = routedSamples.long_reads
+            .map { meta, reads -> tuple(meta.id, meta, reads) }
+        def longFilteredById = RUN_FILTLONG.out.cleaned_reads
+            .map { meta, reads -> tuple(meta.id, reads) }
+
+        def longReadsForIrma
+        if( params.host_depletion ) {
+            def longDepletedById = RUN_HOST_DEPLETION_MINIMAP2.out.depleted_reads
+                .map { meta, reads -> tuple(meta.id, reads) }
+
+            longReadsForIrma = longRawById
+                .join(longFilteredById)
+                .join(longDepletedById)
+                .map { sampleId, meta, rawReads, filteredReads, depletedReads ->
+                    tuple(meta, chooseBestReads(meta, rawReads, filteredReads, depletedReads))
+                }
+        }
+        else {
+            longReadsForIrma = longRawById
+                .join(longFilteredById)
+                .map { sampleId, meta, rawReads, filteredReads ->
+                    tuple(meta, chooseBestReads(meta, rawReads, filteredReads, null))
+                }
+        }
 
         longReadsForVariants = longReadsForIrma
 
@@ -248,6 +348,12 @@ workflow {
         irmaDirs
     )
     RUN_MERGE_DEPTH_SUMMARY(RUN_SAMTOOLS_DEPTH.out.depth_stats.collect())
+
+    PRECHECK_MULTIQC()
+    RUN_MULTIQC(
+        PRECHECK_MULTIQC.out.ok,
+        multiqcArtifacts.collect()
+    )
 
     PRECHECK_BLAST_TYPING()
     PREPARE_INFLUENZA_BLAST_DB()
@@ -383,6 +489,9 @@ workflow {
         .mix(RUN_MERGE_ASSEMBLY_QC.out.report)
         .mix(RUN_MERGE_DEPTH_SUMMARY.out.summary)
         .mix(RUN_COINFECTION.out.report)
+        .mix(RUN_MULTIQC.out.report)
+        .mix(RUN_MULTIQC.out.data_dir)
+        .mix(dashboardQcArtifacts)
 
     if( params.run_antiviral ) {
         surveillanceDependencies = surveillanceDependencies.mix(

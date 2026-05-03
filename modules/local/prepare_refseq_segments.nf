@@ -1,7 +1,6 @@
 process PREPARE_REFSEQ_SEGMENTS {
     tag 'refseq-segments'
     label 'mk_flu_tools'
-    publishDir "${params.output_dir}/qc_reports/full_variant_calls", pattern: 'refseq_segments.log', mode: 'copy', overwrite: true
 
     input:
     path blast_summary

@@ -4,18 +4,16 @@ process RUN_MERGE_SEGMENTS {
     publishDir "${params.output_dir}/assembly_final/segments", pattern: 'segment_*.fasta', mode: 'copy', overwrite: true
 
     input:
-    path segment_files
+    path segment_files, stageAs: 'input??/*'
 
     output:
-    path("segment_*.fasta"), emit: merged_segments
+    path('segment_*.fasta'), emit: merged_segments
 
     script:
-    def stagedSegmentFiles = segment_files.collect { "\"${it.getFileName().toString()}\"" }.join(' ')
-
     """
     for seg in 1 2 3 4 5 6 7 8; do
         : > "segment_\${seg}.fasta"
-        for fasta in ${stagedSegmentFiles}; do
+        for fasta in input*/*; do
             case "\$fasta" in
                 *"_segment_\${seg}.fasta")
                     if [ -s "\$fasta" ]; then
