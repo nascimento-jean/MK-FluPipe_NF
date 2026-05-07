@@ -38,8 +38,8 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
         [ -f "depleted/${meta.id}_depleted_R_1.fastq.gz" ] && mv "depleted/${meta.id}_depleted_R_1.fastq.gz" "depleted/${meta.id}_depleted_R1.fastq.gz" || true
         [ -f "depleted/${meta.id}_depleted_R_2.fastq.gz" ] && mv "depleted/${meta.id}_depleted_R_2.fastq.gz" "depleted/${meta.id}_depleted_R2.fastq.gz" || true
 
-        # Original pipeline behavior: if depletion yields no usable reads, fall back to trimmed/raw reads.
-        [ -s "depleted/${meta.id}_depleted_R1.fastq.gz" ] || {
+        # For paired-end reads both mates must exist; otherwise fall back to the trimmed pair.
+        [ -s "depleted/${meta.id}_depleted_R1.fastq.gz" ] && [ -s "depleted/${meta.id}_depleted_R2.fastq.gz" ] || {
             cp "${reads[0]}" "depleted/${meta.id}_depleted_R1.fastq.gz"
             cp "${reads[1]}" "depleted/${meta.id}_depleted_R2.fastq.gz"
         }

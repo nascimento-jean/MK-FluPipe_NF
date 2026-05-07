@@ -17,6 +17,7 @@ include { PRECHECK_IRMA_SHORT } from './modules/local/precheck_irma_short'
 include { RUN_IRMA_SHORT } from './modules/local/run_irma_short'
 include { PRECHECK_IRMA_LONG } from './modules/local/precheck_irma_long'
 include { RUN_IRMA_LONG } from './modules/local/run_irma_long'
+include { RUN_MERGE_IRMA_STATUS } from './modules/local/run_merge_irma_status'
 include { RUN_EXTRACT_SEGMENTS } from './modules/local/run_extract_segments'
 include { RUN_MERGE_SEGMENTS } from './modules/local/run_merge_segments'
 include { RUN_ASSEMBLY_QC } from './modules/local/run_assembly_qc'
@@ -165,6 +166,7 @@ workflow {
 
     def irmaConsensus = Channel.empty()
     def irmaDirs = Channel.empty()
+    def irmaStatuses = Channel.empty()
     def shortReadsForVariants = Channel.empty()
     def longReadsForVariants = Channel.empty()
     def multiqcArtifacts = Channel.empty()
@@ -286,6 +288,7 @@ workflow {
 
         irmaConsensus = irmaConsensus.mix(RUN_IRMA_SHORT.out.consensus_fastas)
         irmaDirs = irmaDirs.mix(RUN_IRMA_SHORT.out.irma_dirs)
+        irmaStatuses = irmaStatuses.mix(RUN_IRMA_SHORT.out.statuses)
     }
 
     if( params.seq_type == 'long' ) {
@@ -325,7 +328,14 @@ workflow {
 
         irmaConsensus = irmaConsensus.mix(RUN_IRMA_LONG.out.consensus_fastas)
         irmaDirs = irmaDirs.mix(RUN_IRMA_LONG.out.irma_dirs)
+        irmaStatuses = irmaStatuses.mix(RUN_IRMA_LONG.out.statuses)
     }
+
+    RUN_MERGE_IRMA_STATUS(
+        irmaStatuses
+            .map { meta, statusFile -> statusFile }
+            .collect()
+    )
 
     RUN_EXTRACT_SEGMENTS(irmaConsensus)
     RUN_MERGE_SEGMENTS(RUN_EXTRACT_SEGMENTS.out.segment_files.flatten().collect())
