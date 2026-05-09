@@ -1,0 +1,33 @@
+{
+  "title": "MK-FluPipe NF: A reproducible DSL2 Nextflow workflow for Influenza short-read and long-read analysis",
+  "description": "MK Flu-Pipe Nextflow is a Nextflow DSL2 pipeline for Influenza genome analysis, supporting short-read (Illumina) and long-read (ONT) sequencing data. It covers QC, host depletion, IRMA assembly, BLAST typing, Nextclade classification, iVar/Medaka variant calling, antiviral resistance, H5 virulence markers, coinfection analysis, and GISAID-ready surveillance outputs.",
+  "version": "1.0.0",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "language": "eng",
+  "keywords": [
+    "influenza",
+    "genomic surveillance",
+    "bioinformatics",
+    "nextflow",
+    "IRMA",
+    "NGS",
+    "virology",
+    "public health"
+  ],
+  "creators": [
+    {
+      "name": "Nascimento, Jean",
+      "affiliation": "LACEN-AL / ICBS-UFAL",
+      "orcid": "0000-0002-2383-4871"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/nascimento-jean/MK-FluPipe_NF",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
