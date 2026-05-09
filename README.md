@@ -9,6 +9,8 @@
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge)](https://www.docker.com/)
 [![Singularity](https://img.shields.io/badge/Containers-Singularity%20%2F%20Apptainer-1f6feb?style=for-the-badge)](https://sylabs.io/docs/)
 [![IRMA](https://img.shields.io/badge/IRMA-v1.3.2-8a2be2?style=for-the-badge)](https://hub.docker.com/r/cdcgov/irma)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20100567.svg)](https://doi.org/10.5281/zenodo.20100567)
+
 </div>
 
 ---
@@ -24,8 +26,8 @@
 - [8. Main parameters](#8-main-parameters)
 - [9. Outputs](#9-outputs)
 - [10. Databases and cache behavior](#10-databases-and-cache-behavior)
-- [11. GitHub releases and packages](#11-github-releases-and-packages)
-- [12. Frequently asked questions](#12-frequently-asked-questions)
+- [11. Frequently asked questions](#11-frequently-asked-questions)
+- [12. Citation](#12-citation)
 
 ## 1. Overview
 `MK Flu-Pipe Nextflow` is the Nextflow DSL2 implementation of the MK Flu-Pipe Influenza workflow. It is designed to be reproducible, modular, and friendly to both first-time and experienced users.
@@ -324,48 +326,7 @@ The workflow automatically recreates and populates `mk_flupipe_db/` as needed. T
 
 If `mk_flupipe_db/` is deleted, it will be rebuilt on the next run.
 
-## 11. GitHub releases and packages
-The repository already hosts the workflow source code. The remaining GitHub-facing pieces are:
-- a versioned **Release**;
-- published **container packages**.
-
-### 11.1. Release workflow
-A typical first release flow is:
-```bash
-git add README.md docs/mk_flupipe_nextflow_workflow.svg .github/workflows/publish-ghcr.yml
-git commit -m "Docs: refresh README and workflow diagram"
-git push origin main
-
-git tag -a v1.0.0 -m "MK Flu-Pipe Nextflow v1.0.0"
-git push origin v1.0.0
-```
-
-Then open GitHub and create the Release from tag `v1.0.0`.
-
-Recommended release assets or notes:
-- workflow version and highlights;
-- validated profiles (`linux,docker`, `linux,singularity`);
-- validated short-read and long-read support;
-- updated dashboard and MultiQC integration;
-- any limitations still under active refinement.
-
-### 11.2. Packages via GitHub Container Registry (GHCR)
-This repository now includes a GitHub Actions workflow in:
-```text
-.github/workflows/publish-ghcr.yml
-```
-
-It publishes two Docker images to GitHub Container Registry:
-- `ghcr.io/<owner>/mk-flupipe-nf-mk-flu-tools`
-- `ghcr.io/<owner>/mk-flupipe-nf-medaka-tools`
-
-The workflow can be triggered in two ways:
-- automatically when you push a tag such as `v1.0.0`;
-- manually from the **Actions** tab using **Run workflow**.
-
-Once the workflow succeeds, those images will appear in the repository's **Packages** section on GitHub.
-
-## 12. Frequently asked questions
+## 11. Frequently asked questions
 ### Does the pipeline require Conda?
 No. The recommended execution strategy is based on Docker and Singularity / Apptainer.
 
@@ -391,3 +352,11 @@ Final sequences in:
 - optional downstream FASTA exports;
 
 are normalized so that degenerate bases are converted to `N`, matching the original workflow logic.
+
+## 12. Citation
+
+If you use MK-FluPipe NF in your research, please cite:
+
+> Nascimento, J. (2025). *MK-FluPipe NF: A reproducible DSL2 Nextflow workflow for Influenza short-read and long-read analysis* (v0.1.1). Zenodo. https://doi.org/10.5281/zenodo.20100567
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20100567.svg)](https://doi.org/10.5281/zenodo.20100567)
