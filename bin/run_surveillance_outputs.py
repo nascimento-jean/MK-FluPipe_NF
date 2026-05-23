@@ -673,7 +673,11 @@ def main():
     total_h5 = len({row.get("sample", "") for row in h5_rows if row.get("sample")})
 
     type_counts = Counter(row.get("type", "Unknown") for row in typing_rows)
-    subtype_chart_labels = [("Not determined" if row.get("blast_classification") == "-" else row.get("blast_classification", "Unknown")) for row in typing_rows]
+    subtype_chart_labels = [
+        ("Not determined" if row.get("blast_classification") == "-" else row.get("blast_classification", "Unknown"))
+        for row in typing_rows
+        if row.get("type") == "A"
+    ]
     subtype_counts = Counter(subtype_chart_labels)
     assembly_labels, assembly_values = ordered_counts(typing_rows, "qc_assembly", ["PASS", "WARN", "FAIL"])
     coinf_labels, coinf_values = ordered_counts(coinfection_rows, "coinfection_status", ["OK", "WARN"])
@@ -727,14 +731,10 @@ def main():
         gisaid_dir.mkdir(parents=True, exist_ok=True)
         gisaid_fasta = gisaid_dir / "gisaid_sequences.fasta"
         with gisaid_fasta.open("w", encoding="utf-8") as handle:
-            for row in run_summary_rows:
-                sample = row["sample"]
-                consensus_path = consensus_map.get(sample)
-                if not consensus_path or not consensus_path.exists():
-                    continue
-                virus_name, subtype = build_gisaid_name(row, args.gisaid_location.strip(), args.gisaid_year or str(date.today().year))
-                for _, seq in parse_fasta(consensus_path):
-                    handle.write(f">{virus_name}|{subtype}|{sample}\n{normalize_sequence(seq)}\n")
+            for consensus_path in consensus_paths:
+                if consensus_path.exists() and consensus_path.stat().st_size > 0:
+                    for header, seq in parse_fasta(consensus_path):
+                        handle.write(f">{header}\n{normalize_sequence(seq)}\n")
 
         gisaid_csv = gisaid_dir / "gisaid_metadata.csv"
         with gisaid_csv.open("w", encoding="utf-8", newline="") as handle:

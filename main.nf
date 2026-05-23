@@ -53,6 +53,7 @@ include { RUN_LEGACY_PIPELINE } from './modules/local/run_legacy_pipeline'
 def validateParams() {
     def errors = []
     def allowedSeqTypes = ['auto', 'short_paired', 'short_single', 'long']
+    def allowedSeqModes = ['', 'illumina_paired', 'sra_paired', 'generic_paired', 'single']
 
     if( !params.input_dir ) {
         errors << "Missing required parameter: --input_dir"
@@ -64,6 +65,10 @@ def validateParams() {
 
     if( !allowedSeqTypes.contains(params.seq_type as String) ) {
         errors << "Invalid --seq_type '${params.seq_type}'. Allowed: ${allowedSeqTypes.join(', ')}"
+    }
+
+    if( !allowedSeqModes.contains((params.seq_mode ?: '') as String) ) {
+        errors << "Invalid --seq_mode '${params.seq_mode}'. Allowed: ${allowedSeqModes.findAll { it }.join(', ')} or empty"
     }
 
     if( params.run_legacy_bridge && !params.legacy_script ) {
@@ -134,11 +139,13 @@ workflow {
     log.info "Output directory: ${params.output_dir}"
     log.info "IRMA module     : ${params.irma_module}"
     log.info "Seq type        : ${params.seq_type}"
+    log.info "Seq mode        : ${params.seq_mode ?: 'auto'}"
     log.info "Legacy bridge   : ${params.run_legacy_bridge}"
 
     DISCOVER_SAMPLES(
         params.input_dir,
-        params.seq_type
+        params.seq_type,
+        (params.seq_mode ?: '') as String
     )
 
     PLAN_RUN(

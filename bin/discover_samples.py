@@ -13,6 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Discover MK Flu-Pipe samples")
     parser.add_argument("--input-dir", required=True)
     parser.add_argument("--seq-type", default="auto")
+    parser.add_argument("--seq-mode", default="")
     parser.add_argument("--samplesheet", required=True)
     parser.add_argument("--summary", required=True)
     return parser.parse_args()
@@ -29,26 +30,33 @@ def strip_fastq_suffix(name: str) -> str:
     return name
 
 
-def classify_short_fastq(path: Path):
+def classify_illumina_paired(path: Path):
     name = path.name
 
-    # Illumina/BaseSpace style: SAMPLE_L001_R1_001.fastq.gz
     for suffix in FASTQ_SUFFIXES:
         token = f"_L001_R1_001{suffix}"
         if name.endswith(token):
             sample_id = name[: -len(token)]
             mate_name = f"{sample_id}_L001_R2_001{suffix}"
             return sample_id, mate_name
+    return None
 
-    # SRA/ENA style: SAMPLE_1.fastq.gz
+
+def classify_sra_paired(path: Path):
+    name = path.name
+
     for suffix in FASTQ_SUFFIXES:
         token = f"_1{suffix}"
         if name.endswith(token):
             sample_id = name[: -len(token)]
             mate_name = f"{sample_id}_2{suffix}"
             return sample_id, mate_name
+    return None
 
-    # Generic paired-end style: SAMPLE_R1_XXX.fastq.gz or SAMPLE_R1.fastq.gz
+
+def classify_generic_paired(path: Path):
+    name = path.name
+
     for suffix in FASTQ_SUFFIXES:
         token = f"_R1{suffix}"
         if name.endswith(token):
@@ -66,7 +74,22 @@ def classify_short_fastq(path: Path):
     return None
 
 
-def discover(input_dir: Path, seq_type: str):
+def classify_short_fastq(path: Path, seq_mode: str):
+    if seq_mode == "illumina_paired":
+        return classify_illumina_paired(path)
+    if seq_mode == "sra_paired":
+        return classify_sra_paired(path)
+    if seq_mode == "generic_paired":
+        return classify_generic_paired(path)
+
+    for classifier in (classify_illumina_paired, classify_sra_paired, classify_generic_paired):
+        match = classifier(path)
+        if match:
+            return match
+    return None
+
+
+def discover(input_dir: Path, seq_type: str, seq_mode: str):
     files = sorted([p for p in input_dir.iterdir() if p.is_file() and is_fastq(p)])
     consumed = set()
     rows = []
@@ -77,8 +100,9 @@ def discover(input_dir: Path, seq_type: str):
 
         stem = strip_fastq_suffix(path.name)
 
-        if seq_type in {"auto", "short_paired"}:
-            match = classify_short_fastq(path)
+        forced_single = seq_mode == "single" or seq_type in {"short_single", "long"}
+        if not forced_single and seq_type in {"auto", "short_paired"}:
+            match = classify_short_fastq(path, seq_mode)
             if match:
                 sample_id, mate_name = match
                 mate_path = input_dir / mate_name
@@ -126,10 +150,11 @@ def write_samplesheet(path: Path, rows):
         writer.writerows(rows)
 
 
-def write_summary(path: Path, input_dir: Path, seq_type: str, rows):
+def write_summary(path: Path, input_dir: Path, seq_type: str, seq_mode: str, rows):
     summary = {
         "input_dir": str(input_dir.resolve()),
         "requested_seq_type": seq_type,
+        "requested_seq_mode": seq_mode,
         "sample_count": len(rows),
         "paired_count": sum(1 for row in rows if row["layout"] == "paired"),
         "single_count": sum(1 for row in rows if row["layout"] == "single"),
@@ -146,12 +171,12 @@ def main():
     if not input_dir.is_dir():
         raise SystemExit(f"Input path is not a directory: {input_dir}")
 
-    rows = discover(input_dir, args.seq_type)
+    rows = discover(input_dir, args.seq_type, args.seq_mode)
     if not rows:
         raise SystemExit(f"No FASTQ files found in: {input_dir}")
 
     write_samplesheet(Path(args.samplesheet), rows)
-    write_summary(Path(args.summary), input_dir, args.seq_type, rows)
+    write_summary(Path(args.summary), input_dir, args.seq_type, args.seq_mode, rows)
 
 
 if __name__ == "__main__":

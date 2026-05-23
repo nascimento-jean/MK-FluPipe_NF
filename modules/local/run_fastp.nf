@@ -25,11 +25,45 @@ process RUN_FASTP {
     // the task instead of hanging forever. Configurable via params.fastp_timeout
     // in nextflow.config (default 1800s = 30 min).
     def fastpTimeoutSec = (params.fastp_timeout ?: 1800) as int
+    // Startup watchdog: if fastp creates no output at all within this window,
+    // treat it as a dead start and let Nextflow retry immediately.
+    def fastpStartupTimeoutSec = (params.fastp_startup_timeout ?: 300) as int
 
     if( meta.layout == 'paired' ) {
         """
         set -euo pipefail
         mkdir -p trimmed reports
+
+        run_fastp_with_startup_watch() {
+            "\$@" &
+            fastp_pid=\$!
+            waited=0
+
+            while kill -0 "\$fastp_pid" 2>/dev/null; do
+                for expected in "\${expected_outputs[@]}"; do
+                    if [ -s "\$expected" ]; then
+                        wait "\$fastp_pid"
+                        return \$?
+                    fi
+                done
+
+                if [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
+                    echo "fastp produced no output for ${fastpStartupTimeoutSec}s; killing stalled process." >&2
+                    pkill -TERM -P "\$fastp_pid" 2>/dev/null || true
+                    kill -TERM "\$fastp_pid" 2>/dev/null || true
+                    sleep 5
+                    pkill -KILL -P "\$fastp_pid" 2>/dev/null || true
+                    kill -KILL "\$fastp_pid" 2>/dev/null || true
+                    wait "\$fastp_pid" 2>/dev/null || true
+                    exit 124
+                fi
+
+                sleep 5
+                waited=\$((waited + 5))
+            done
+
+            wait "\$fastp_pid"
+        }
 
         # ---------------------------------------------------------------------
         # WHY UNCOMPRESSED OUTPUT + EXTERNAL pigz:
@@ -45,7 +79,14 @@ process RUN_FASTP {
         # Nextflow's retry strategy (in nextflow.config) handle it cleanly
         # instead of hanging the whole pipeline forever.
         # ---------------------------------------------------------------------
-        timeout --kill-after=30s ${fastpTimeoutSec}s fastp \\
+        expected_outputs=(
+            "trimmed/${meta.id}_R1.trimmed.fastq"
+            "trimmed/${meta.id}_R2.trimmed.fastq"
+            "reports/${meta.id}.fastp.html"
+            "reports/${meta.id}.fastp.json"
+        )
+
+        run_fastp_with_startup_watch timeout --kill-after=30s ${fastpTimeoutSec}s fastp \\
             --thread ${fastpThreads} \\
             --in1 "${reads[0]}" \\
             --in2 "${reads[1]}" \\
@@ -84,9 +125,46 @@ process RUN_FASTP {
         set -euo pipefail
         mkdir -p trimmed reports
 
+        run_fastp_with_startup_watch() {
+            "\$@" &
+            fastp_pid=\$!
+            waited=0
+
+            while kill -0 "\$fastp_pid" 2>/dev/null; do
+                for expected in "\${expected_outputs[@]}"; do
+                    if [ -s "\$expected" ]; then
+                        wait "\$fastp_pid"
+                        return \$?
+                    fi
+                done
+
+                if [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
+                    echo "fastp produced no output for ${fastpStartupTimeoutSec}s; killing stalled process." >&2
+                    pkill -TERM -P "\$fastp_pid" 2>/dev/null || true
+                    kill -TERM "\$fastp_pid" 2>/dev/null || true
+                    sleep 5
+                    pkill -KILL -P "\$fastp_pid" 2>/dev/null || true
+                    kill -KILL "\$fastp_pid" 2>/dev/null || true
+                    wait "\$fastp_pid" 2>/dev/null || true
+                    exit 124
+                fi
+
+                sleep 5
+                waited=\$((waited + 5))
+            done
+
+            wait "\$fastp_pid"
+        }
+
         # See paired-end branch above for full rationale on uncompressed
         # output, external pigz, and the timeout wrapper.
-        timeout --kill-after=30s ${fastpTimeoutSec}s fastp \\
+        expected_outputs=(
+            "trimmed/${meta.id}.trimmed.fastq"
+            "reports/${meta.id}.fastp.html"
+            "reports/${meta.id}.fastp.json"
+        )
+
+        run_fastp_with_startup_watch timeout --kill-after=30s ${fastpTimeoutSec}s fastp \\
             --thread ${fastpThreads} \\
             --in1 "${reads[0]}" \\
             --out1 "trimmed/${meta.id}.trimmed.fastq" \\
