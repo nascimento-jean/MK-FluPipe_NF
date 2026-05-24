@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "DISCOVER_SAMPLES"
+    script "modules/local/discover_samples.nf"
+    process "DISCOVER_SAMPLES"
+
+    test("discovers paired short reads when seq_type is short") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/discover-short"
+            }
+            process {
+                """
+                input[0] = "${projectDir}/tests/data/short_paired"
+                input[1] = "short"
+                input[2] = ""
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def samplesheet = path(process.out[0][0])
+            def summary = new groovy.json.JsonSlurper().parse(path(process.out[1][0]))
+            assert samplesheet.readLines().any { it.startsWith("SAMPLE_A,") && it.endsWith(",paired,short_paired") }
+            assert summary.sample_count == 1
+            assert summary.paired_count == 1
+            assert summary.single_count == 0
+            assert summary.samples[0].seq_type == "short_paired"
+        }
+    }
+
+    test("discovers single long reads") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/discover-long"
+            }
+            process {
+                """
+                input[0] = "${projectDir}/tests/data/long_single"
+                input[1] = "long"
+                input[2] = ""
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def samplesheet = path(process.out[0][0])
+            def summary = new groovy.json.JsonSlurper().parse(path(process.out[1][0]))
+            assert samplesheet.readLines().any { it.startsWith("LONG_A,") && it.endsWith(",single,long") }
+            assert summary.sample_count == 1
+            assert summary.paired_count == 0
+            assert summary.single_count == 1
+            assert summary.samples[0].seq_type == "long"
+        }
+    }
+}

@@ -553,7 +553,8 @@ These checks do not run IRMA, BLAST, Nextclade, Medaka, or other containerized a
 - checking Python syntax for sample discovery;
 - confirming short-read discovery maps `--seq_type short` to `short_paired`;
 - confirming long-read discovery produces `seq_type=long`;
-- confirming invalid parameter combinations fail before heavy tasks are launched.
+- confirming invalid parameter combinations fail before heavy tasks are launched;
+- running `nf-test` pipeline and process tests for parameter validation and `DISCOVER_SAMPLES`.
 
 Run the local smoke test from the repository root with:
 
@@ -561,7 +562,19 @@ Run the local smoke test from the repository root with:
 python3 tests/check_discover_samples.py
 ```
 
-The GitHub workflow also installs Nextflow and verifies selected parameter-validation failures, including missing input directories and invalid long-read module/Medaka combinations.
+If `nf-test` is installed, run the local nf-test suite with:
+
+```bash
+nf-test test tests/nf-test --ci
+```
+
+If the local Nextflow history file causes a duration-related runtime error, run nf-test with an isolated Nextflow home:
+
+```bash
+NXF_HOME=/tmp/mkflupipe-nxfhome-test nf-test test tests/nf-test --ci
+```
+
+The GitHub workflow installs Nextflow and nf-test, then verifies selected parameter-validation failures, including missing input directories and invalid long-read module/Medaka combinations.
 
 ## 13. Citation
 

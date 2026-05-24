@@ -97,3 +97,36 @@ jobs:
           set -e
           test "$status" -ne 0
           grep -q "requires --run_medaka true" tests/output_invalid_long_antiviral.log
+
+  nf-test:
+    name: nf-test
+    runs-on: ubuntu-latest
+    env:
+      NXF_HOME: ${{ runner.temp }}/nextflow-nf-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Nextflow
+        run: |
+          curl -s https://get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+          nextflow -version
+
+      - name: Install nf-test
+        run: |
+          curl -fsSL https://get.nf-test.com | bash
+          sudo mv nf-test /usr/local/bin/
+          nf-test version
+
+      - name: Run nf-test suite
+        run: |
+          mkdir -p test-results
+          nf-test test tests/nf-test --ci --junitxml test-results/nf-test.xml

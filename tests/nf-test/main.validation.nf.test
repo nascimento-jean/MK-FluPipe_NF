@@ -1,0 +1,56 @@
+nextflow_pipeline {
+
+    name "MK Flu-Pipe parameter validation"
+    script "main.nf"
+
+    test("rejects missing input directory") {
+        when {
+            params {
+                input_dir = "/tmp/mkflupipe_nf_test_missing_input"
+                output_dir = "tests/output/nf-test/missing-input"
+                irma_module = "FLU-utr"
+                seq_type = "short"
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("Input directory does not exist") }
+        }
+    }
+
+    test("rejects long reads with non-minion IRMA module") {
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/long_single"
+                output_dir = "tests/output/nf-test/invalid-long-module"
+                irma_module = "FLU-utr"
+                seq_type = "long"
+                run_antiviral = "false"
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("Long-read runs require --irma_module FLU-minion") }
+        }
+    }
+
+    test("rejects long-read antiviral analysis without Medaka") {
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/long_single"
+                output_dir = "tests/output/nf-test/invalid-long-antiviral"
+                irma_module = "FLU-minion"
+                seq_type = "long"
+                run_antiviral = "true"
+                run_medaka = "false"
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("requires --run_medaka true") }
+        }
+    }
+}
