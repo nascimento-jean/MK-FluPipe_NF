@@ -101,8 +101,6 @@ jobs:
   nf-test:
     name: nf-test
     runs-on: ubuntu-latest
-    env:
-      NXF_HOME: ${{ runner.temp }}/nextflow-nf-test
 
     steps:
       - name: Checkout repository
@@ -129,4 +127,4 @@ jobs:
       - name: Run nf-test suite
         run: |
           mkdir -p test-results
-          nf-test test tests/nf-test --ci --junitxml test-results/nf-test.xml
+          NXF_HOME="$RUNNER_TEMP/nextflow-nf-test" nf-test test tests/nf-test --ci --junitxml test-results/nf-test.xml
