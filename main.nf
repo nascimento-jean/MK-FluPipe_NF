@@ -50,35 +50,181 @@ include { RUN_COINFECTION } from './modules/local/run_coinfection'
 include { RUN_SURVEILLANCE_OUTPUTS } from './modules/local/run_surveillance_outputs'
 include { RUN_LEGACY_PIPELINE } from './modules/local/run_legacy_pipeline'
 
+def isIntegerLike(value) {
+    return value != null && value.toString() ==~ /-?\d+/
+}
+
+def isDecimalLike(value) {
+    return value != null && value.toString() ==~ /-?(\d+(\.\d*)?|\.\d+)/
+}
+
 def validateParams() {
     def errors = []
-    def allowedSeqTypes = ['auto', 'short_paired', 'short_single', 'long']
+    def warnings = []
+    def allowedSeqTypes = ['auto', 'short', 'short_paired', 'short_single', 'long']
     def allowedSeqModes = ['', 'illumina_paired', 'sra_paired', 'generic_paired', 'single']
+    def seqType = params.seq_type as String
+    def seqMode = (params.seq_mode ?: '') as String
+    def irmaModule = (params.irma_module ?: '') as String
 
     if( !params.input_dir ) {
         errors << "Missing required parameter: --input_dir"
+    }
+    else {
+        def inputDir = new File(params.input_dir as String)
+        if( !inputDir.exists() ) {
+            errors << "Input directory does not exist: ${params.input_dir}"
+        }
+        else if( !inputDir.isDirectory() ) {
+            errors << "Input path is not a directory: ${params.input_dir}"
+        }
     }
 
     if( !params.irma_module ) {
         errors << "Missing required parameter: --irma_module"
     }
 
-    if( !allowedSeqTypes.contains(params.seq_type as String) ) {
+    if( !allowedSeqTypes.contains(seqType) ) {
         errors << "Invalid --seq_type '${params.seq_type}'. Allowed: ${allowedSeqTypes.join(', ')}"
     }
 
-    if( !allowedSeqModes.contains((params.seq_mode ?: '') as String) ) {
+    if( !allowedSeqModes.contains(seqMode) ) {
         errors << "Invalid --seq_mode '${params.seq_mode}'. Allowed: ${allowedSeqModes.findAll { it }.join(', ')} or empty"
+    }
+
+    if( seqType == 'long' && params.run_ivar ) {
+        errors << "--run_ivar is only supported for short-read runs. Use --run_medaka true for long reads."
+    }
+
+    if( seqType != 'long' && params.run_medaka ) {
+        errors << "--run_medaka is only supported for long-read runs. Use --run_ivar true for short reads."
+    }
+
+    if( seqType == 'long' && irmaModule != 'FLU-minion' ) {
+        errors << "Long-read runs require --irma_module FLU-minion"
+    }
+
+    if( seqType != 'long' && irmaModule == 'FLU-minion' ) {
+        errors << "--irma_module FLU-minion requires --seq_type long. The pipeline does not infer long reads from --seq_type auto."
+    }
+
+    if( seqType == 'long' && seqMode != '' ) {
+        errors << "--seq_mode is only used for short-read sample discovery. Leave --seq_mode empty for long-read runs."
+    }
+
+    if( seqType == 'long' && params.run_antiviral && !params.run_medaka ) {
+        errors << "Long-read antiviral resistance analysis requires --run_medaka true because canonical long-read variants are produced with Medaka."
+    }
+
+    if( seqType == 'long' && params.adapter_fasta ) {
+        warnings << "--adapter_fasta is ignored for long-read runs because preprocessing uses Filtlong, not fastp."
+    }
+
+    if( seqMode == 'single' && seqType == 'short_paired' ) {
+        errors << "--seq_mode single cannot be combined with --seq_type short_paired"
+    }
+
+    if( params.adapter_fasta ) {
+        def adapterPath = new File(params.adapter_fasta as String)
+        if( !adapterPath.exists() || !adapterPath.isFile() ) {
+            errors << "Adapter FASTA does not exist or is not a file: ${params.adapter_fasta}"
+        }
     }
 
     if( params.run_legacy_bridge && !params.legacy_script ) {
         errors << "When --run_legacy_bridge is true, --legacy_script must be provided"
     }
+    else if( params.run_legacy_bridge ) {
+        def legacyPath = new File(params.legacy_script as String)
+        if( !legacyPath.exists() || !legacyPath.isFile() ) {
+            errors << "Legacy script does not exist or is not a file: ${params.legacy_script}"
+        }
+    }
+
+    if( params.gisaid_year ) {
+        def yearText = params.gisaid_year.toString()
+        if( !(yearText ==~ /\d{4}/) ) {
+            errors << "--gisaid_year must be a four-digit year, for example 2026"
+        }
+    }
+
+    def positiveIntParams = [
+        'min_len_short',
+        'min_len_long',
+        'min_coverage',
+        'min_segments',
+        'ivar_depth',
+        'queue_size',
+        'fastqc_threads',
+        'fastp_threads',
+        'host_depletion_threads',
+        'irma_threads',
+        'fastp_max_forks',
+        'fastp_timeout',
+        'fastp_startup_timeout',
+        'host_depletion_max_forks',
+        'irma_max_forks'
+    ]
+    positiveIntParams.each { name ->
+        def value = params[name]
+        if( !isIntegerLike(value) || value.toString().toInteger() < 1 ) {
+            errors << "--${name} must be a positive integer"
+        }
+    }
+
+    if( !isIntegerLike(params.max_len_long) || params.max_len_long.toString().toInteger() < 0 ) {
+        errors << "--max_len_long must be 0 or a positive integer"
+    }
+    else if( isIntegerLike(params.min_len_long) && params.max_len_long.toString().toInteger() > 0 && params.max_len_long.toString().toInteger() < params.min_len_long.toString().toInteger() ) {
+        errors << "--max_len_long must be greater than or equal to --min_len_long, or 0 to disable the upper limit"
+    }
+
+    def fractionParams = ['ivar_freq', 'minority_freq']
+    fractionParams.each { name ->
+        if( !isDecimalLike(params[name]) ) {
+            errors << "--${name} must be a number between 0 and 1"
+            return
+        }
+        def value = new BigDecimal(params[name].toString())
+        if( value < 0 || value > 1 ) {
+            errors << "--${name} must be between 0 and 1"
+        }
+    }
+
+    def percentageParams = ['max_n_pct', 'coinfection_pct']
+    percentageParams.each { name ->
+        if( !isDecimalLike(params[name]) ) {
+            errors << "--${name} must be a number between 0 and 100"
+            return
+        }
+        def value = new BigDecimal(params[name].toString())
+        if( value < 0 || value > 100 ) {
+            errors << "--${name} must be between 0 and 100"
+        }
+    }
+
+    if( !isIntegerLike(params.min_qual) || params.min_qual.toString().toInteger() < 0 || params.min_qual.toString().toInteger() > 93 ) {
+        errors << "--min_qual must be between 0 and 93"
+    }
+
+    if( params.max_cpus != null && params.max_cpus.toString().trim() != '' && (!isIntegerLike(params.max_cpus) || params.max_cpus.toString().toInteger() < 1) ) {
+        errors << "--max_cpus must be a positive integer when provided"
+    }
+
+    if( params.filtlong_min_mean_q != null && params.filtlong_min_mean_q.toString().trim() != '' && !isDecimalLike(params.filtlong_min_mean_q) ) {
+        errors << "--filtlong_min_mean_q must be numeric when provided"
+    }
+    else if( params.filtlong_min_mean_q != null && params.filtlong_min_mean_q.toString().trim() != '' && new BigDecimal(params.filtlong_min_mean_q.toString()) < 0 ) {
+        errors << "--filtlong_min_mean_q must be greater than or equal to 0"
+    }
 
     if( errors ) {
+        log.error "Parameter validation failed. See nextflow_schema.json for the documented parameter contract."
         errors.each { log.error it }
         System.exit(1)
     }
+
+    warnings.each { log.warn it }
 }
 
 def yesNo(boolean value) {

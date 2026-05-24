@@ -34,3 +34,8 @@ __pycache__/
 Thumbs.db
 
 containers/sif/
+
+# Tests
+.nf-test/
+test-results/
+tests/output/

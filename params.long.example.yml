@@ -1,16 +1,16 @@
 # MK Flu-Pipe Nextflow example parameters.
-# This example is tuned for a typical short-read Illumina run.
+# This example is tuned for a typical Oxford Nanopore long-read run.
 
-input_dir: /path/to/fastqs
-output_dir: /path/to/results
-irma_module: FLU-utr
-seq_type: short
+input_dir: /path/to/long_fastqs
+output_dir: /path/to/long_results
+irma_module: FLU-minion
+seq_type: long
 seq_mode: ""
 
 run_fastqc: true
 host_depletion: true
-run_ivar: true
-run_medaka: false
+run_ivar: false
+run_medaka: true
 run_antiviral: true
 run_h5_virulence: true
 run_fullvarcall: true
@@ -20,8 +20,8 @@ min_len_short: 75
 min_len_long: 200
 max_len_long: 0
 min_qual: 20
-filtlong_min_mean_q: null
-min_coverage: 50
+filtlong_min_mean_q: 10
+min_coverage: 20
 max_n_pct: 10
 min_segments: 4
 
@@ -38,7 +38,7 @@ legacy_script: ""
 
 max_cpus: null
 max_memory: null
-queue_size: 8
+queue_size: 4
 fastqc_threads: 2
 fastp_threads: 2
 host_depletion_threads: 2

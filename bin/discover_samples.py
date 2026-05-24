@@ -89,7 +89,14 @@ def classify_short_fastq(path: Path, seq_mode: str):
     return None
 
 
+def normalize_seq_type(seq_type: str) -> str:
+    if seq_type == "short":
+        return "short_paired"
+    return seq_type
+
+
 def discover(input_dir: Path, seq_type: str, seq_mode: str):
+    normalized_seq_type = normalize_seq_type(seq_type)
     files = sorted([p for p in input_dir.iterdir() if p.is_file() and is_fastq(p)])
     consumed = set()
     rows = []
@@ -100,8 +107,8 @@ def discover(input_dir: Path, seq_type: str, seq_mode: str):
 
         stem = strip_fastq_suffix(path.name)
 
-        forced_single = seq_mode == "single" or seq_type in {"short_single", "long"}
-        if not forced_single and seq_type in {"auto", "short_paired"}:
+        forced_single = seq_mode == "single" or normalized_seq_type in {"short_single", "long"}
+        if not forced_single and normalized_seq_type in {"auto", "short_paired"}:
             match = classify_short_fastq(path, seq_mode)
             if match:
                 sample_id, mate_name = match
@@ -121,8 +128,8 @@ def discover(input_dir: Path, seq_type: str, seq_mode: str):
                     continue
 
         layout = "single"
-        inferred = seq_type if seq_type != "auto" else "short_single"
-        if seq_type == "long":
+        inferred = normalized_seq_type if normalized_seq_type != "auto" else "short_single"
+        if normalized_seq_type == "long":
             inferred = "long"
 
         consumed.add(path)

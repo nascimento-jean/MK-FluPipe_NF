@@ -27,7 +27,8 @@
 - [9. Outputs](#9-outputs)
 - [10. Databases and cache behavior](#10-databases-and-cache-behavior)
 - [11. Frequently asked questions](#11-frequently-asked-questions)
-- [12. Citation](#12-citation)
+- [12. Automated checks](#12-automated-checks)
+- [13. Citation](#13-citation)
 
 ## 1. Overview
 
@@ -257,6 +258,19 @@ nextflow run main.nf \
 
 All parameters have defaults in `nextflow.config`. If you do not provide a parameter on the command line, the pipeline uses the default value.
 
+The formal parameter contract is available in:
+
+```text
+nextflow_schema.json
+```
+
+Example parameter files are available in:
+
+```text
+params.example.yml
+params.long.example.yml
+```
+
 ## 8. Parameters
 
 ### 8.1. Required and core run parameters
@@ -269,6 +283,8 @@ All parameters have defaults in `nextflow.config`. If you do not provide a param
 | `--seq_type` | `auto` | Sequencing type. Use `auto`, `short`, or `long`. |
 | `--seq_mode` | empty | Optional discovery mode hint used by sample discovery and legacy compatibility. Usually left empty. |
 
+For ONT long-read runs, use `--seq_type long` and `--irma_module FLU-minion`. The pipeline intentionally does not infer long-read mode from `--seq_type auto`.
+
 ### 8.2. Analysis switches
 
 | Parameter | Default | Description |
@@ -280,6 +296,8 @@ All parameters have defaults in `nextflow.config`. If you do not provide a param
 | `--run_antiviral` | `true` | Enable antiviral resistance analysis. |
 | `--run_h5_virulence` | `true` | Enable H5 virulence marker analysis. |
 | `--run_fullvarcall` | `false` | Enable full protein mutation calling against RefSeq segment references. |
+
+For long-read antiviral resistance analysis, `--run_medaka true` is required because canonical long-read variants are produced with Medaka.
 | `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
 | `--legacy_script` | empty | Path to the optional legacy Bash script used only when `--run_legacy_bridge true`. |
 
@@ -525,7 +543,27 @@ The pipeline records the failed sample in the IRMA status output and continues d
 
 Final sequences in `assembly_final/`, `Surveillance_Outputs/multisample_consensus.fasta`, and GISAID-ready FASTA exports are normalized so that degenerate bases are converted to `N`.
 
-## 12. Citation
+## 12. Automated checks
+
+The repository includes a lightweight GitHub Actions workflow in `.github/workflows/tests.yml`.
+
+These checks do not run IRMA, BLAST, Nextclade, Medaka, or other containerized analysis steps. They are designed as fast guardrails for:
+
+- validating `nextflow_schema.json`;
+- checking Python syntax for sample discovery;
+- confirming short-read discovery maps `--seq_type short` to `short_paired`;
+- confirming long-read discovery produces `seq_type=long`;
+- confirming invalid parameter combinations fail before heavy tasks are launched.
+
+Run the local smoke test from the repository root with:
+
+```bash
+python3 tests/check_discover_samples.py
+```
+
+The GitHub workflow also installs Nextflow and verifies selected parameter-validation failures, including missing input directories and invalid long-read module/Medaka combinations.
+
+## 13. Citation
 
 If you use MK Flu-Pipe Nextflow in your research, please cite:
 

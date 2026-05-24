@@ -1,0 +1,321 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/nascimento-jean/MK-FluPipe_NF/nextflow_schema.json",
+  "title": "MK Flu-Pipe Nextflow parameters",
+  "description": "Parameter schema for MK Flu-Pipe Nextflow v0.1.0.",
+  "type": "object",
+  "definitions": {
+    "path": {
+      "type": "string",
+      "description": "Filesystem path."
+    },
+    "positive_integer": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "percentage": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  },
+  "required": [
+    "input_dir",
+    "irma_module"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "seq_type": {
+            "const": "long"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "irma_module": {
+            "const": "FLU-minion"
+          },
+          "seq_mode": {
+            "const": ""
+          },
+          "run_ivar": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "irma_module": {
+            "const": "FLU-minion"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seq_type": {
+            "const": "long"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "input_dir": {
+      "$ref": "#/definitions/path",
+      "description": "Folder containing input FASTQ or FASTQ.GZ files."
+    },
+    "output_dir": {
+      "$ref": "#/definitions/path",
+      "default": "results",
+      "description": "Folder where pipeline outputs will be written."
+    },
+    "irma_module": {
+      "type": "string",
+      "examples": [
+        "FLU-utr",
+        "FLU-minion"
+      ],
+      "description": "IRMA module used for assembly."
+    },
+    "seq_type": {
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "short",
+        "short_paired",
+        "short_single",
+        "long"
+      ],
+      "description": "Input sequencing type. Use short for Illumina short reads or long for ONT reads."
+    },
+    "seq_mode": {
+      "type": "string",
+      "default": "",
+      "enum": [
+        "",
+        "illumina_paired",
+        "sra_paired",
+        "generic_paired",
+        "single"
+      ],
+      "description": "Optional short-read filename pattern hint for sample discovery."
+    },
+    "run_fastqc": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run FastQC on raw reads."
+    },
+    "host_depletion": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run host depletion before assembly."
+    },
+    "run_ivar": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run canonical iVar variant calling for short reads."
+    },
+    "run_medaka": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run canonical Medaka variant calling for long reads."
+    },
+    "run_antiviral": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run antiviral resistance analysis."
+    },
+    "run_h5_virulence": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run H5 virulence marker screening."
+    },
+    "run_fullvarcall": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run full protein mutation calling."
+    },
+    "adapter_fasta": {
+      "$ref": "#/definitions/path",
+      "default": "",
+      "description": "Optional adapter FASTA for fastp. Leave empty to use paired-end adapter detection."
+    },
+    "min_len_short": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 75,
+      "description": "Minimum read length retained by fastp for short reads."
+    },
+    "min_len_long": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 200,
+      "description": "Minimum read length retained by Filtlong for long reads."
+    },
+    "max_len_long": {
+      "$ref": "#/definitions/non_negative_integer",
+      "default": 0,
+      "description": "Maximum long-read length retained by Filtlong. Use 0 to disable the upper limit."
+    },
+    "min_qual": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 93,
+      "default": 20,
+      "description": "Minimum qualified base quality threshold used by fastp."
+    },
+    "filtlong_min_mean_q": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "default": null,
+      "description": "Optional minimum mean read quality for Filtlong."
+    },
+    "min_coverage": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 50,
+      "description": "Minimum coverage threshold used by assembly QC."
+    },
+    "max_n_pct": {
+      "$ref": "#/definitions/percentage",
+      "default": 10,
+      "description": "Maximum allowed N percentage before QC warning/failure."
+    },
+    "min_segments": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 4,
+      "description": "Minimum number of Influenza segments expected for downstream reporting."
+    },
+    "ivar_freq": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.03,
+      "description": "Minimum allele frequency used by iVar."
+    },
+    "ivar_depth": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 10,
+      "description": "Minimum depth used by iVar."
+    },
+    "minority_freq": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.2,
+      "description": "Minority variant frequency threshold."
+    },
+    "coinfection_pct": {
+      "$ref": "#/definitions/percentage",
+      "default": 5,
+      "description": "Percent threshold used to flag possible coinfection or subtype mixing."
+    },
+    "medaka_env": {
+      "type": "string",
+      "default": "medaka_env",
+      "description": "Medaka environment name retained for legacy compatibility."
+    },
+    "gisaid_location": {
+      "type": "string",
+      "default": "",
+      "description": "Location used to generate GISAID-ready outputs. Empty disables GISAID-ready files."
+    },
+    "gisaid_year": {
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Year used in GISAID-style isolate names."
+    },
+    "run_legacy_bridge": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run the optional legacy Bash bridge."
+    },
+    "legacy_script": {
+      "$ref": "#/definitions/path",
+      "default": "",
+      "description": "Path to the legacy Bash script used only when run_legacy_bridge is true."
+    },
+    "max_cpus": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "default": null,
+      "description": "Global CPU cap per process."
+    },
+    "max_memory": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Global memory cap per process, for example 24 GB."
+    },
+    "queue_size": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 8,
+      "description": "Maximum number of tasks submitted concurrently by the local executor."
+    },
+    "fastqc_threads": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Threads requested by FastQC."
+    },
+    "fastp_threads": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Threads requested by fastp."
+    },
+    "host_depletion_threads": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Threads requested by host depletion."
+    },
+    "irma_threads": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 4,
+      "description": "Threads requested by IRMA."
+    },
+    "fastp_max_forks": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Maximum concurrent fastp tasks."
+    },
+    "fastp_timeout": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 1800,
+      "description": "Hard timeout in seconds for fastp tasks."
+    },
+    "fastp_startup_timeout": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 300,
+      "description": "Startup watchdog in seconds for fastp tasks."
+    },
+    "host_depletion_max_forks": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Maximum concurrent host depletion tasks."
+    },
+    "irma_max_forks": {
+      "$ref": "#/definitions/positive_integer",
+      "default": 2,
+      "description": "Maximum concurrent IRMA tasks."
+    }
+  }
+}
