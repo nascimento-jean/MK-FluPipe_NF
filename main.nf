@@ -58,6 +58,17 @@ def isDecimalLike(value) {
     return value != null && value.toString() ==~ /-?(\d+(\.\d*)?|\.\d+)/
 }
 
+def paramBool(value) {
+    if( value instanceof Boolean ) {
+        return value
+    }
+    if( value == null ) {
+        return false
+    }
+    def normalized = value.toString().trim().toLowerCase()
+    return ['true', '1', 'yes', 'y', 'on'].contains(normalized)
+}
+
 def validateParams() {
     def errors = []
     def warnings = []
@@ -66,6 +77,10 @@ def validateParams() {
     def seqType = params.seq_type as String
     def seqMode = (params.seq_mode ?: '') as String
     def irmaModule = (params.irma_module ?: '') as String
+    def runIvar = paramBool(params.run_ivar)
+    def runMedaka = paramBool(params.run_medaka)
+    def runAntiviral = paramBool(params.run_antiviral)
+    def runLegacyBridge = paramBool(params.run_legacy_bridge)
 
     if( !params.input_dir ) {
         errors << "Missing required parameter: --input_dir"
@@ -92,11 +107,11 @@ def validateParams() {
         errors << "Invalid --seq_mode '${params.seq_mode}'. Allowed: ${allowedSeqModes.findAll { it }.join(', ')} or empty"
     }
 
-    if( seqType == 'long' && params.run_ivar ) {
+    if( seqType == 'long' && runIvar ) {
         errors << "--run_ivar is only supported for short-read runs. Use --run_medaka true for long reads."
     }
 
-    if( seqType != 'long' && params.run_medaka ) {
+    if( seqType != 'long' && runMedaka ) {
         errors << "--run_medaka is only supported for long-read runs. Use --run_ivar true for short reads."
     }
 
@@ -112,7 +127,7 @@ def validateParams() {
         errors << "--seq_mode is only used for short-read sample discovery. Leave --seq_mode empty for long-read runs."
     }
 
-    if( seqType == 'long' && params.run_antiviral && !params.run_medaka ) {
+    if( seqType == 'long' && runAntiviral && !runMedaka ) {
         errors << "Long-read antiviral resistance analysis requires --run_medaka true because canonical long-read variants are produced with Medaka."
     }
 
@@ -131,10 +146,10 @@ def validateParams() {
         }
     }
 
-    if( params.run_legacy_bridge && !params.legacy_script ) {
+    if( runLegacyBridge && !params.legacy_script ) {
         errors << "When --run_legacy_bridge is true, --legacy_script must be provided"
     }
-    else if( params.run_legacy_bridge ) {
+    else if( runLegacyBridge ) {
         def legacyPath = new File(params.legacy_script as String)
         if( !legacyPath.exists() || !legacyPath.isFile() ) {
             errors << "Legacy script does not exist or is not a file: ${params.legacy_script}"
@@ -279,6 +294,15 @@ def chooseBestReads(meta, rawReads, trimmedReads, depletedReads = null) {
 
 workflow {
     validateParams()
+    def seqType = params.seq_type as String
+    def runFastqc = paramBool(params.run_fastqc)
+    def hostDepletion = paramBool(params.host_depletion)
+    def runIvar = paramBool(params.run_ivar)
+    def runMedaka = paramBool(params.run_medaka)
+    def runAntiviral = paramBool(params.run_antiviral)
+    def runH5Virulence = paramBool(params.run_h5_virulence)
+    def runFullvarcall = paramBool(params.run_fullvarcall)
+    def runLegacyBridge = paramBool(params.run_legacy_bridge)
 
     log.info "Starting MK Flu-Pipe Nextflow MVP"
     log.info "Input directory : ${params.input_dir}"
@@ -286,7 +310,7 @@ workflow {
     log.info "IRMA module     : ${params.irma_module}"
     log.info "Seq type        : ${params.seq_type}"
     log.info "Seq mode        : ${params.seq_mode ?: 'auto'}"
-    log.info "Legacy bridge   : ${params.run_legacy_bridge}"
+    log.info "Legacy bridge   : ${runLegacyBridge}"
 
     DISCOVER_SAMPLES(
         params.input_dir,
@@ -299,14 +323,14 @@ workflow {
         DISCOVER_SAMPLES.out.summary,
         params.seq_type as String,
         params.irma_module as String,
-        boolString(params.run_fastqc as boolean),
-        boolString(params.host_depletion as boolean),
-        boolString(params.run_ivar as boolean),
-        boolString(params.run_medaka as boolean),
-        boolString(params.run_antiviral as boolean),
-        boolString(params.run_h5_virulence as boolean),
-        boolString(params.run_fullvarcall as boolean),
-        boolString(params.run_legacy_bridge as boolean)
+        boolString(runFastqc),
+        boolString(hostDepletion),
+        boolString(runIvar),
+        boolString(runMedaka),
+        boolString(runAntiviral),
+        boolString(runH5Virulence),
+        boolString(runFullvarcall),
+        boolString(runLegacyBridge)
     )
 
     def routedSamples = DISCOVER_SAMPLES.out.samplesheet
@@ -325,7 +349,7 @@ workflow {
     def multiqcArtifacts = Channel.empty()
     def dashboardQcArtifacts = Channel.empty()
 
-    if( params.run_fastqc ) {
+    if( runFastqc ) {
         PRECHECK_FASTQC()
 
         RUN_FASTQC(
@@ -370,11 +394,11 @@ workflow {
         )
     }
 
-    if( params.host_depletion ) {
+    if( hostDepletion ) {
         PREPARE_HUMAN_BOWTIE2_INDEX()
     }
 
-    if( params.host_depletion && params.seq_type != 'long' ) {
+    if( hostDepletion && seqType != 'long' ) {
         PRECHECK_BOWTIE2_HOST_DEPLETION()
 
         RUN_HOST_DEPLETION_BOWTIE2(
@@ -389,7 +413,7 @@ workflow {
         )
     }
 
-    if( params.host_depletion && params.seq_type == 'long' ) {
+    if( hostDepletion && seqType == 'long' ) {
         PRECHECK_MINIMAP2_HOST_DEPLETION()
 
         RUN_HOST_DEPLETION_MINIMAP2(
@@ -404,7 +428,7 @@ workflow {
     }
 
 
-    if( params.seq_type != 'long' ) {
+    if( seqType != 'long' ) {
         PRECHECK_IRMA_SHORT()
 
         def shortRawById = routedSamples.short_reads
@@ -413,7 +437,7 @@ workflow {
             .map { meta, reads -> tuple(meta.id, reads) }
 
         def shortReadsForIrma
-        if( params.host_depletion ) {
+        if( hostDepletion ) {
             def shortDepletedById = RUN_HOST_DEPLETION_BOWTIE2.out.depleted_reads
                 .map { meta, reads -> tuple(meta.id, reads) }
 
@@ -444,7 +468,7 @@ workflow {
         irmaStatuses = irmaStatuses.mix(RUN_IRMA_SHORT.out.statuses)
     }
 
-    if( params.seq_type == 'long' ) {
+    if( seqType == 'long' ) {
         PRECHECK_IRMA_LONG()
 
         def longRawById = routedSamples.long_reads
@@ -453,7 +477,7 @@ workflow {
             .map { meta, reads -> tuple(meta.id, reads) }
 
         def longReadsForIrma
-        if( params.host_depletion ) {
+        if( hostDepletion ) {
             def longDepletedById = RUN_HOST_DEPLETION_MINIMAP2.out.depleted_reads
                 .map { meta, reads -> tuple(meta.id, reads) }
 
@@ -540,11 +564,11 @@ workflow {
         .splitCsv(header: true, sep: '\t')
         .map { row -> tuple(row.sample as String, row.type_blast as String, row.subtype_HA as String, row.subtype_NA as String) }
 
-    if( (params.seq_type != 'long' && params.run_ivar) || (params.seq_type == 'long' && params.run_antiviral && params.run_medaka) ) {
+    if( (seqType != 'long' && runIvar) || (seqType == 'long' && runAntiviral && runMedaka) ) {
         PREPARE_CANONICAL_REFS()
     }
 
-    if( params.run_fullvarcall ) {
+    if( runFullvarcall ) {
         PRECHECK_FULLVARCALL()
         PREPARE_REFSEQ_SEGMENTS(
             RUN_BLAST_TYPING.out.summary,
@@ -552,7 +576,7 @@ workflow {
         )
     }
 
-    if( params.seq_type != 'long' && params.run_ivar ) {
+    if( seqType != 'long' && runIvar ) {
         PRECHECK_IVAR_CANONICAL()
 
         def ivarInput = shortReadsForVariants
@@ -568,7 +592,7 @@ workflow {
             ivarInput
         )
 
-        if( params.run_antiviral ) {
+        if( runAntiviral ) {
             PREPARE_ANTIVIRAL_DB()
             RUN_ANTIVIRAL_RESISTANCE(
                 PREPARE_ANTIVIRAL_DB.out.db,
@@ -579,14 +603,14 @@ workflow {
         }
     }
 
-    if( params.seq_type == 'long' && params.run_medaka ) {
+    if( seqType == 'long' && runMedaka ) {
         PRECHECK_MEDAKA_VARIANTS()
         RUN_MEDAKA_VARIANTS(
             PRECHECK_MEDAKA_VARIANTS.out.ok,
             irmaDirs
         )
 
-        if( params.run_antiviral ) {
+        if( runAntiviral ) {
             PREPARE_ANTIVIRAL_DB()
 
             def medakaCanonicalInput = longReadsForVariants
@@ -611,8 +635,8 @@ workflow {
         }
     }
 
-    if( params.run_fullvarcall ) {
-        def fullVarcallReads = params.seq_type == 'long' ? longReadsForVariants : shortReadsForVariants
+    if( runFullvarcall ) {
+        def fullVarcallReads = seqType == 'long' ? longReadsForVariants : shortReadsForVariants
         def fullVarcallInput = fullVarcallReads
             .map { meta, reads -> tuple(meta.id, meta, reads) }
             .join(blastTypingRows)
@@ -632,7 +656,7 @@ workflow {
         )
     }
 
-    if( params.run_h5_virulence ) {
+    if( runH5Virulence ) {
         RUN_H5_VIRULENCE(
             RUN_BLAST_TYPING.out.summary,
             irmaDirs
@@ -656,19 +680,19 @@ workflow {
         .mix(RUN_MULTIQC.out.data_dir)
         .mix(dashboardQcArtifacts)
 
-    if( params.run_antiviral ) {
+    if( runAntiviral ) {
         surveillanceDependencies = surveillanceDependencies.mix(
-            params.seq_type == 'long'
+            seqType == 'long'
                 ? RUN_ANTIVIRAL_RESISTANCE_LONG.out.report
                 : RUN_ANTIVIRAL_RESISTANCE.out.report
         )
     }
 
-    if( params.run_h5_virulence ) {
+    if( runH5Virulence ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_H5_VIRULENCE.out.report)
     }
 
-    if( params.run_fullvarcall ) {
+    if( runFullvarcall ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_MERGE_FULLVARCALL.out.summary)
     }
 
@@ -686,7 +710,7 @@ workflow {
         (params.gisaid_year ?: '') as String
     )
 
-    if( params.run_legacy_bridge ) {
+    if( runLegacyBridge ) {
         RUN_LEGACY_PIPELINE(
             params.input_dir as String,
             params.output_dir as String,
@@ -694,13 +718,13 @@ workflow {
             (params.seq_mode ?: '') as String,
             params.seq_type as String,
             params.legacy_script as String,
-            yesNo(params.run_fastqc as boolean),
-            yesNo(params.host_depletion as boolean),
-            yesNo(params.run_ivar as boolean),
-            yesNo(params.run_medaka as boolean),
-            yesNo(params.run_antiviral as boolean),
-            yesNo(params.run_h5_virulence as boolean),
-            yesNo(params.run_fullvarcall as boolean),
+            yesNo(runFastqc),
+            yesNo(hostDepletion),
+            yesNo(runIvar),
+            yesNo(runMedaka),
+            yesNo(runAntiviral),
+            yesNo(runH5Virulence),
+            yesNo(runFullvarcall),
             params.adapter_fasta as String,
             params.min_len_short as String,
             params.min_len_long as String,
