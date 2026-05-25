@@ -53,6 +53,18 @@ def assert_short_alias() -> None:
     assert metadata["paired_count"] == 1, metadata
 
 
+def assert_illumina_sample_number_removed() -> None:
+    with tempfile.TemporaryDirectory(prefix="mkflupipe_illumina_sample_") as tmp:
+        input_dir = Path(tmp)
+        (input_dir / "261118000051_S40_L001_R1_001.fastq.gz").touch()
+        (input_dir / "261118000051_S40_L001_R2_001.fastq.gz").touch()
+        rows, metadata = run_discover(input_dir, "short")
+    assert len(rows) == 1, rows
+    assert rows[0]["sample_id"] == "261118000051", rows
+    assert rows[0]["layout"] == "paired", rows
+    assert metadata["paired_count"] == 1, metadata
+
+
 def assert_long_discovery() -> None:
     rows, metadata = run_discover(REPO_ROOT / "tests" / "data" / "long_single", "long")
     assert len(rows) == 1, rows
@@ -65,6 +77,7 @@ def assert_long_discovery() -> None:
 
 def main() -> int:
     assert_short_alias()
+    assert_illumina_sample_number_removed()
     assert_long_discovery()
     print("discover_samples smoke tests passed")
     return 0

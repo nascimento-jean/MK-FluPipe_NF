@@ -661,8 +661,16 @@ def main():
     local_h5 = ensure_local_copy(dep_map.get("h5_virulence_markers.tsv"), out_dir / "h5_virulence" / "h5_virulence_markers.tsv")
     local_fullvar = ensure_local_copy(dep_map.get("all_samples_protein_mutations.tsv"), out_dir / "full_variant_calls" / "all_samples_protein_mutations.tsv")
     local_multiqc = ensure_local_copy(dep_map.get("multiqc_report.html"), out_dir / "multiqc_report.html")
+    local_metadata = ensure_local_copy(dep_map.get("validated_metadata.csv"), out_dir / "metadata.csv")
     if local_coinfection:
         write_tsv(local_coinfection, coinfection_rows, ["sample", "coinfection_status", "details"])
+    metadata_rows = []
+    metadata_fields = []
+    if local_metadata:
+        with local_metadata.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            metadata_fields = reader.fieldnames or []
+            metadata_rows = list(reader)
 
     protein_summary_rows = summarize_protein_mutations(fullvar_rows)
     total_samples = len(typing_rows)
@@ -724,6 +732,7 @@ def main():
         ("H5 virulence markers", "h5_virulence/h5_virulence_markers.tsv" if local_h5 else ""),
         ("Protein mutations", "full_variant_calls/all_samples_protein_mutations.tsv" if local_fullvar else ""),
         ("MultiQC full report", "multiqc_report.html" if local_multiqc else ""),
+        ("Sample metadata", "metadata.csv" if local_metadata else ""),
     ]
 
     if args.gisaid_location.strip():
@@ -839,6 +848,7 @@ def main():
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#alerts' type='button'>Resistance & H5</button></li>",
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#coinfection' type='button'>Coinfection</button></li>",
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#mutations' type='button'>Protein Mutations</button></li>",
+        ("<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#metadata' type='button'>Metadata</button></li>" if metadata_rows else ""),
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#downloads' type='button'>Downloads</button></li>",
         "</ul>",
         "<div class='tab-content'>",
@@ -890,6 +900,9 @@ def main():
         "<div class='section'>Protein mutations by segment</div><div class='panel'>",
         render_protein_table("tbl_fvc", protein_summary_rows),
         "</div></div>",
+        ("<div class='tab-pane fade' id='metadata'><div class='section'>Sample metadata</div><div class='panel'>"
+         + render_html_table("tbl_metadata", metadata_rows, metadata_fields, "Validated metadata for phylogenetic analyses")
+         + "</div></div>" if metadata_rows else ""),
         "<div class='tab-pane fade' id='downloads'>",
         "<div class='section'>Download center</div><div class='download-list'>",
     ]
@@ -906,7 +919,7 @@ def main():
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap5.min.js'></script>",
-            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_coinf',{paging:false,info:false});});</script>",
+            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_metadata');dt('tbl_coinf',{paging:false,info:false});});</script>",
             "<script>function dlExcel(tid){var wb=XLSX.utils.book_new();var ws=XLSX.utils.table_to_sheet(document.getElementById(tid));XLSX.utils.book_append_sheet(wb,ws,tid);XLSX.writeFile(wb,'MKFluPipe_'+tid+'_'+new Date().toISOString().slice(0,10)+'.xlsx');}</script>",
             f"<script>const charts={json.dumps(charts, ensure_ascii=False)};",
             """
@@ -960,6 +973,7 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         "  multisample_consensus.fasta                Multi-sample FASTA\n"
         "  surveillance_report.html                   Interactive dashboard report\n"
         "  multiqc_report.html                        Full MultiQC report (copied when available)\n"
+        "  metadata.csv                               Validated sample metadata (when provided)\n"
         "  coinfection/coinfection_report.tsv         Co-infection analysis per sample\n"
         "  antiviral_resistance/antiviral_resistance.tsv Antiviral resistance mutations\n"
         "  h5_virulence/h5_virulence_markers.tsv      H5 virulence markers (if detected)\n"

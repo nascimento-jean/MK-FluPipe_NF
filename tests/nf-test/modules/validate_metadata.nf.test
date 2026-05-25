@@ -1,0 +1,46 @@
+nextflow_process {
+
+    name "VALIDATE_METADATA"
+    script "modules/local/validate_metadata.nf"
+    process "VALIDATE_METADATA"
+
+    test("validates metadata for discovered short-read samples") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/metadata-valid"
+            }
+            process {
+                """
+                input[0] = file("${projectDir}/tests/data/metadata/samplesheet_short.csv")
+                input[1] = file("${projectDir}/tests/data/metadata/valid_short.csv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def rows = path(process.out[1][0]).readLines()
+            def summary = new groovy.json.JsonSlurper().parse(path(process.out[2][0]))
+            assert rows.any { it.startsWith("SAMPLE_A,2026-05-24,") }
+            assert summary.sample_count == 1
+        }
+    }
+
+    test("rejects metadata with missing required column") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/metadata-invalid"
+            }
+            process {
+                """
+                input[0] = file("${projectDir}/tests/data/metadata/samplesheet_short.csv")
+                input[1] = file("${projectDir}/tests/data/metadata/invalid_missing_column.csv")
+                """
+            }
+        }
+
+            then {
+                assert process.failed
+            }
+        }
+    }

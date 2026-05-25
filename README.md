@@ -249,6 +249,7 @@ nextflow run main.nf \
   --coinfection_pct 5.0 \
   --gisaid_location Brazil-AL \
   --gisaid_year 2026 \
+  --metadata_csv /path/to/sample_metadata.csv \
   --max_cpus 8 \
   --max_memory "24 GB" \
   --queue_size 2
@@ -342,7 +343,24 @@ For long-read antiviral resistance analysis, `--run_medaka true` is required bec
 | `--gisaid_location` | empty | Location string used to create GISAID-style isolate names and to enable `GISAID_ready/` outputs. If empty, GISAID-ready files are not generated. |
 | `--gisaid_year` | `null` | Year used in GISAID-style isolate names. If empty, the current year is used. |
 
-### 8.8. Resource and concurrency parameters
+### 8.8. Sample metadata for phylogenetic extensions
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--metadata_csv` | empty | Optional CSV with sample metadata to validate and preserve for future phylogenetic and phylogeographic analyses. Required columns are `sample_name` and `collection_date`; optional geographic columns include `country`, `state`, `city`, and `location`. |
+
+When provided, `sample_name` must exactly match every sample ID discovered from the FASTQ filenames and `collection_date` must use ISO format (`YYYY-MM-DD`). Each discovered sample must occur exactly once. For standard Illumina paired files such as `261118000051_S40_L001_R1_001.fastq.gz`, the technical sample-number suffix is omitted and the expected metadata identifier is `261118000051`.
+
+Example:
+
+```csv
+sample_name,collection_date,country,state,city
+SAMPLE_A,2026-05-24,Brazil,Alagoas,Maceio
+```
+
+The validated table is exported as `Surveillance_Outputs/metadata.csv` and is displayed in a `Metadata` dashboard tab. This is groundwork for a later Augur phylogeny module; it does not generate trees yet.
+
+### 8.9. Resource and concurrency parameters
 
 | Parameter | Default | Description |
 |---|---:|---|
@@ -466,6 +484,7 @@ The workflow writes all results under `--output_dir`.
 | `Surveillance_Outputs/run_summary.tsv` | Compact integrated per-sample run summary. |
 | `Surveillance_Outputs/run_summary.json` | JSON version of the integrated run summary. |
 | `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA. Segment headers are preserved and degenerate bases are converted to `N`. |
+| `Surveillance_Outputs/metadata.csv` | Validated sample metadata exported only when `--metadata_csv` is provided. |
 | `Surveillance_Outputs/coinfection/coinfection_report.tsv` | Final coinfection table copied for dashboard and download access. |
 | `Surveillance_Outputs/antiviral_resistance/antiviral_resistance.tsv` | Final antiviral resistance table copied for dashboard and download access. |
 | `Surveillance_Outputs/h5_virulence/h5_virulence_markers.tsv` | Final H5 virulence marker table copied for dashboard and download access. |
@@ -492,6 +511,7 @@ GISAID outputs are generated only when `--gisaid_location` is provided.
 | `depleted_reads/bowtie2/` | Short-read runs with `--host_depletion true`. |
 | `depleted_reads/minimap2/` | Long-read runs with `--host_depletion true`. |
 | `Surveillance_Outputs/GISAID_ready/` | Runs with `--gisaid_location` set. |
+| `Surveillance_Outputs/metadata.csv` | Runs with `--metadata_csv` set and valid metadata supplied. |
 
 ## 10. Databases and cache behavior
 
@@ -551,15 +571,18 @@ These checks do not run IRMA, BLAST, Nextclade, Medaka, or other containerized a
 
 - validating `nextflow_schema.json`;
 - checking Python syntax for sample discovery;
+- checking Python syntax and behavior for optional sample metadata validation;
 - confirming short-read discovery maps `--seq_type short` to `short_paired`;
+- confirming standard Illumina `_S<number>` tokens are not retained in reported sample identifiers;
 - confirming long-read discovery produces `seq_type=long`;
 - confirming invalid parameter combinations fail before heavy tasks are launched;
-- running `nf-test` pipeline and process tests for parameter validation and `DISCOVER_SAMPLES`.
+- running `nf-test` pipeline and process tests for parameter validation, `DISCOVER_SAMPLES`, and `VALIDATE_METADATA`.
 
 Run the local smoke test from the repository root with:
 
 ```bash
 python3 tests/check_discover_samples.py
+python3 tests/check_metadata.py
 ```
 
 If `nf-test` is installed, run the local nf-test suite with:

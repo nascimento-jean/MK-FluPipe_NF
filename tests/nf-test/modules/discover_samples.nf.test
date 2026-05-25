@@ -30,6 +30,27 @@ nextflow_process {
         }
     }
 
+    test("removes the Illumina S-number from a paired short-read sample ID") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/discover-illumina-numbered"
+            }
+            process {
+                """
+                input[0] = "${projectDir}/tests/data/short_illumina_numbered"
+                input[1] = "short"
+                input[2] = ""
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def samplesheet = path(process.out[0][0])
+            assert samplesheet.readLines().any { it.startsWith("261118000051,") && it.contains("261118000051_S40_L001_R1_001.fastq.gz") }
+        }
+    }
+
     test("discovers single long reads") {
         when {
             params {

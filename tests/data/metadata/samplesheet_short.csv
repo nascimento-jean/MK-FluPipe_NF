@@ -1,0 +1,2 @@
+sample_id,r1,r2,layout,seq_type
+SAMPLE_A,/tmp/a_R1.fastq.gz,/tmp/a_R2.fastq.gz,paired,short_paired

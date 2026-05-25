@@ -53,4 +53,21 @@ nextflow_pipeline {
             assert workflow.stdout.any { it.contains("requires --run_medaka true") }
         }
     }
+
+    test("rejects missing metadata CSV") {
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/short_paired"
+                output_dir = "tests/output/nf-test/invalid-metadata-path"
+                irma_module = "FLU-utr"
+                seq_type = "short"
+                metadata_csv = "${projectDir}/tests/data/metadata/not_present.csv"
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("Metadata CSV does not exist or is not a file") }
+        }
+    }
 }

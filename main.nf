@@ -1,6 +1,7 @@
 nextflow.enable.dsl = 2
 
 include { DISCOVER_SAMPLES } from './modules/local/discover_samples'
+include { VALIDATE_METADATA } from './modules/local/validate_metadata'
 include { PLAN_RUN } from './modules/local/plan_run'
 include { PRECHECK_FASTQC } from './modules/local/precheck_fastqc'
 include { RUN_FASTQC } from './modules/local/run_fastqc'
@@ -143,6 +144,16 @@ def validateParams() {
         def adapterPath = new File(params.adapter_fasta as String)
         if( !adapterPath.exists() || !adapterPath.isFile() ) {
             errors << "Adapter FASTA does not exist or is not a file: ${params.adapter_fasta}"
+        }
+    }
+
+    if( params.metadata_csv ) {
+        def metadataPath = new File(params.metadata_csv as String)
+        if( !metadataPath.exists() || !metadataPath.isFile() ) {
+            errors << "Metadata CSV does not exist or is not a file: ${params.metadata_csv}"
+        }
+        else if( !metadataPath.name.toLowerCase().endsWith('.csv') ) {
+            errors << "--metadata_csv must point to a .csv file"
         }
     }
 
@@ -303,6 +314,7 @@ workflow {
     def runH5Virulence = paramBool(params.run_h5_virulence)
     def runFullvarcall = paramBool(params.run_fullvarcall)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
+    def metadataCsv = (params.metadata_csv ?: '').toString().trim()
 
     log.info "Starting MK Flu-Pipe Nextflow MVP"
     log.info "Input directory : ${params.input_dir}"
@@ -318,8 +330,19 @@ workflow {
         (params.seq_mode ?: '') as String
     )
 
+    def analysisSamplesheet = DISCOVER_SAMPLES.out.samplesheet
+    def validatedMetadata = Channel.empty()
+    if( metadataCsv ) {
+        VALIDATE_METADATA(
+            DISCOVER_SAMPLES.out.samplesheet,
+            file(metadataCsv)
+        )
+        analysisSamplesheet = VALIDATE_METADATA.out.samplesheet
+        validatedMetadata = VALIDATE_METADATA.out.metadata
+    }
+
     PLAN_RUN(
-        DISCOVER_SAMPLES.out.samplesheet,
+        analysisSamplesheet,
         DISCOVER_SAMPLES.out.summary,
         params.seq_type as String,
         params.irma_module as String,
@@ -333,7 +356,7 @@ workflow {
         boolString(runLegacyBridge)
     )
 
-    def routedSamples = DISCOVER_SAMPLES.out.samplesheet
+    def routedSamples = analysisSamplesheet
         .splitCsv(header: true)
         .map { row -> sampleTuple(row) }
         .branch { meta, reads ->
@@ -694,6 +717,10 @@ workflow {
 
     if( runFullvarcall ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_MERGE_FULLVARCALL.out.summary)
+    }
+
+    if( metadataCsv ) {
+        surveillanceDependencies = surveillanceDependencies.mix(validatedMetadata)
     }
 
     RUN_SURVEILLANCE_OUTPUTS(

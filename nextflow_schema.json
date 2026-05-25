@@ -240,6 +240,11 @@
       "default": null,
       "description": "Year used in GISAID-style isolate names."
     },
+    "metadata_csv": {
+      "$ref": "#/definitions/path",
+      "default": "",
+      "description": "Optional CSV metadata file for future phylogenetic analyses. Required columns are sample_name and collection_date; optional location columns include country, state, city, and location."
+    },
     "run_legacy_bridge": {
       "type": "boolean",
       "default": false,

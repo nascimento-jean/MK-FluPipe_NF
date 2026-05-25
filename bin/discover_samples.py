@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 
 
@@ -30,14 +31,20 @@ def strip_fastq_suffix(name: str) -> str:
     return name
 
 
+def normalize_illumina_sample_id(sample_id: str) -> str:
+    """Remove the terminal Illumina sample-number token from a sample name."""
+    return re.sub(r"_S\d+$", "", sample_id)
+
+
 def classify_illumina_paired(path: Path):
     name = path.name
 
     for suffix in FASTQ_SUFFIXES:
         token = f"_L001_R1_001{suffix}"
         if name.endswith(token):
-            sample_id = name[: -len(token)]
-            mate_name = f"{sample_id}_L001_R2_001{suffix}"
+            read_prefix = name[: -len(token)]
+            sample_id = normalize_illumina_sample_id(read_prefix)
+            mate_name = f"{read_prefix}_L001_R2_001{suffix}"
             return sample_id, mate_name
     return None
 
