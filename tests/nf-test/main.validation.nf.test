@@ -70,4 +70,21 @@ nextflow_pipeline {
             assert workflow.stdout.any { it.contains("Metadata CSV does not exist or is not a file") }
         }
     }
+
+    test("requires metadata when phylogeny is enabled") {
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/short_paired"
+                output_dir = "tests/output/nf-test/phylogeny-without-metadata"
+                irma_module = "FLU-utr"
+                seq_type = "short"
+                run_phylogeny = "true"
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("--run_phylogeny true requires --metadata_csv") }
+        }
+    }
 }

@@ -33,6 +33,11 @@ medaka_env: medaka_env
 gisaid_location: ""
 gisaid_year: null
 metadata_csv: ""
+run_phylogeny: false
+phylogeny_context_fasta: ""
+phylogeny_context_metadata: ""
+phylogeny_min_sequences: 3
+phylogeny_threads: 4
 
 run_legacy_bridge: false
 legacy_script: ""

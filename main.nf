@@ -48,6 +48,7 @@ include { RUN_H5_VIRULENCE } from './modules/local/run_h5_virulence'
 include { PRECHECK_MEDAKA_VARIANTS } from './modules/local/precheck_medaka_variants'
 include { RUN_MEDAKA_VARIANTS } from './modules/local/run_medaka_variants'
 include { RUN_COINFECTION } from './modules/local/run_coinfection'
+include { RUN_PHYLOGENY } from './modules/local/run_phylogeny'
 include { RUN_SURVEILLANCE_OUTPUTS } from './modules/local/run_surveillance_outputs'
 include { RUN_LEGACY_PIPELINE } from './modules/local/run_legacy_pipeline'
 
@@ -81,6 +82,7 @@ def validateParams() {
     def runIvar = paramBool(params.run_ivar)
     def runMedaka = paramBool(params.run_medaka)
     def runAntiviral = paramBool(params.run_antiviral)
+    def runPhylogeny = paramBool(params.run_phylogeny)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
 
     if( !params.input_dir ) {
@@ -157,6 +159,31 @@ def validateParams() {
         }
     }
 
+    if( runPhylogeny && !params.metadata_csv ) {
+        errors << "--run_phylogeny true requires --metadata_csv so tree tips have collection dates and locations"
+    }
+
+    def phylogenyContextFasta = (params.phylogeny_context_fasta ?: '').toString().trim()
+    def phylogenyContextMetadata = (params.phylogeny_context_metadata ?: '').toString().trim()
+    if( phylogenyContextFasta || phylogenyContextMetadata ) {
+        if( !runPhylogeny ) {
+            warnings << "Phylogeny context files are ignored unless --run_phylogeny true is supplied."
+        }
+        if( !phylogenyContextFasta || !phylogenyContextMetadata ) {
+            errors << "--phylogeny_context_fasta and --phylogeny_context_metadata must be supplied together"
+        }
+        else {
+            def contextFastaPath = new File(phylogenyContextFasta)
+            def contextMetadataPath = new File(phylogenyContextMetadata)
+            if( !contextFastaPath.exists() || !contextFastaPath.isFile() ) {
+                errors << "Phylogeny context FASTA does not exist or is not a file: ${phylogenyContextFasta}"
+            }
+            if( !contextMetadataPath.exists() || !contextMetadataPath.isFile() ) {
+                errors << "Phylogeny context metadata does not exist or is not a file: ${phylogenyContextMetadata}"
+            }
+        }
+    }
+
     if( runLegacyBridge && !params.legacy_script ) {
         errors << "When --run_legacy_bridge is true, --legacy_script must be provided"
     }
@@ -189,7 +216,9 @@ def validateParams() {
         'fastp_timeout',
         'fastp_startup_timeout',
         'host_depletion_max_forks',
-        'irma_max_forks'
+        'irma_max_forks',
+        'phylogeny_min_sequences',
+        'phylogeny_threads'
     ]
     positiveIntParams.each { name ->
         def value = params[name]
@@ -313,8 +342,11 @@ workflow {
     def runAntiviral = paramBool(params.run_antiviral)
     def runH5Virulence = paramBool(params.run_h5_virulence)
     def runFullvarcall = paramBool(params.run_fullvarcall)
+    def runPhylogeny = paramBool(params.run_phylogeny)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
     def metadataCsv = (params.metadata_csv ?: '').toString().trim()
+    def phylogenyContextFasta = (params.phylogeny_context_fasta ?: '').toString().trim()
+    def phylogenyContextMetadata = (params.phylogeny_context_metadata ?: '').toString().trim()
 
     log.info "Starting MK Flu-Pipe Nextflow MVP"
     log.info "Input directory : ${params.input_dir}"
@@ -322,6 +354,7 @@ workflow {
     log.info "IRMA module     : ${params.irma_module}"
     log.info "Seq type        : ${params.seq_type}"
     log.info "Seq mode        : ${params.seq_mode ?: 'auto'}"
+    log.info "Phylogeny       : ${runPhylogeny ? 'HA/NA with Augur' : 'disabled'}"
     log.info "Legacy bridge   : ${runLegacyBridge}"
 
     DISCOVER_SAMPLES(
@@ -583,6 +616,32 @@ workflow {
             .collect()
     )
 
+    def phylogenyResults = Channel.empty()
+    if( runPhylogeny ) {
+        def contextFasta = phylogenyContextFasta
+            ? file(phylogenyContextFasta)
+            : file("${projectDir}/assets/phylogeny/empty_context.fasta")
+        def contextMetadata = phylogenyContextMetadata
+            ? file(phylogenyContextMetadata)
+            : file("${projectDir}/assets/phylogeny/empty_context_metadata.csv")
+
+        RUN_PHYLOGENY(
+            RUN_BLAST_TYPING.out.summary,
+            RUN_EXTRACT_SEGMENTS.out.segment_files
+                .flatten()
+                .filter { path ->
+                    def name = path.getFileName().toString()
+                    name.endsWith('_segment_4.fasta') || name.endsWith('_segment_6.fasta')
+                }
+                .collect(),
+            validatedMetadata,
+            contextFasta,
+            contextMetadata,
+            params.phylogeny_min_sequences as int
+        )
+        phylogenyResults = RUN_PHYLOGENY.out.results
+    }
+
     def blastTypingRows = RUN_BLAST_TYPING.out.summary
         .splitCsv(header: true, sep: '\t')
         .map { row -> tuple(row.sample as String, row.type_blast as String, row.subtype_HA as String, row.subtype_NA as String) }
@@ -721,6 +780,10 @@ workflow {
 
     if( metadataCsv ) {
         surveillanceDependencies = surveillanceDependencies.mix(validatedMetadata)
+    }
+
+    if( runPhylogeny ) {
+        surveillanceDependencies = surveillanceDependencies.mix(phylogenyResults)
     }
 
     RUN_SURVEILLANCE_OUTPUTS(

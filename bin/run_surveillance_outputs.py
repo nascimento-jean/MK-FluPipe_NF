@@ -26,6 +26,20 @@ GENE_TO_SEGMENT = {
 MISSING = {"", "N/A", "ERRO", "nd", "no_result", "sem_resultado", "sem resultado", "-", "—", "â€”", "Ã¢â‚¬â€"}
 
 
+SUMMARY_PHYLOGENY_FIELDS = [
+    "group",
+    "type",
+    "segment",
+    "subtype",
+    "pipeline_sequences",
+    "context_sequences",
+    "total_sequences",
+    "status",
+    "message",
+    "auspice_json",
+]
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate final surveillance and GISAID outputs")
     parser.add_argument("--output-dir", required=True)
@@ -662,6 +676,7 @@ def main():
     local_fullvar = ensure_local_copy(dep_map.get("all_samples_protein_mutations.tsv"), out_dir / "full_variant_calls" / "all_samples_protein_mutations.tsv")
     local_multiqc = ensure_local_copy(dep_map.get("multiqc_report.html"), out_dir / "multiqc_report.html")
     local_metadata = ensure_local_copy(dep_map.get("validated_metadata.csv"), out_dir / "metadata.csv")
+    local_phylogeny = ensure_local_copy(dep_map.get("phylogeny"), out_dir / "phylogeny")
     if local_coinfection:
         write_tsv(local_coinfection, coinfection_rows, ["sample", "coinfection_status", "details"])
     metadata_rows = []
@@ -671,6 +686,9 @@ def main():
             reader = csv.DictReader(handle)
             metadata_fields = reader.fieldnames or []
             metadata_rows = list(reader)
+    phylogeny_rows = []
+    if local_phylogeny:
+        phylogeny_rows = read_tsv(local_phylogeny / "phylogeny_summary.tsv")
 
     protein_summary_rows = summarize_protein_mutations(fullvar_rows)
     total_samples = len(typing_rows)
@@ -733,7 +751,18 @@ def main():
         ("Protein mutations", "full_variant_calls/all_samples_protein_mutations.tsv" if local_fullvar else ""),
         ("MultiQC full report", "multiqc_report.html" if local_multiqc else ""),
         ("Sample metadata", "metadata.csv" if local_metadata else ""),
+        ("Phylogeny summary", "phylogeny/phylogeny_summary.tsv" if local_phylogeny else ""),
     ]
+    for row in phylogeny_rows:
+        tree_json = row.get("auspice_json", "").strip()
+        if tree_json:
+            group = row.get("group", "tree")
+            download_links.extend(
+                [
+                    (f"{group} Auspice JSON", f"phylogeny/{tree_json}"),
+                    (f"{group} Newick tree", f"phylogeny/{group}/tree.nwk"),
+                ]
+            )
 
     if args.gisaid_location.strip():
         gisaid_dir = out_dir / "GISAID_ready"
@@ -849,6 +878,7 @@ def main():
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#coinfection' type='button'>Coinfection</button></li>",
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#mutations' type='button'>Protein Mutations</button></li>",
         ("<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#metadata' type='button'>Metadata</button></li>" if metadata_rows else ""),
+        ("<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#phylogeny' type='button'>Phylogeny</button></li>" if phylogeny_rows else ""),
         "<li class='nav-item'><button class='nav-link' data-bs-toggle='pill' data-bs-target='#downloads' type='button'>Downloads</button></li>",
         "</ul>",
         "<div class='tab-content'>",
@@ -903,6 +933,10 @@ def main():
         ("<div class='tab-pane fade' id='metadata'><div class='section'>Sample metadata</div><div class='panel'>"
          + render_html_table("tbl_metadata", metadata_rows, metadata_fields, "Validated metadata for phylogenetic analyses")
          + "</div></div>" if metadata_rows else ""),
+        ("<div class='tab-pane fade' id='phylogeny'><div class='section'>HA and NA phylogeny</div><div class='panel'>"
+         + "<p class='text-muted'>Trees are generated separately for influenza A HA/NA subtypes and influenza B HA/NA. Auspice JSON files can be opened in an Auspice viewer; Newick files are also available under Downloads.</p>"
+         + render_html_table("tbl_phylogeny", phylogeny_rows, SUMMARY_PHYLOGENY_FIELDS, "Augur tree-generation summary")
+         + "</div></div>" if phylogeny_rows else ""),
         "<div class='tab-pane fade' id='downloads'>",
         "<div class='section'>Download center</div><div class='download-list'>",
     ]
@@ -919,7 +953,7 @@ def main():
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap5.min.js'></script>",
-            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_metadata');dt('tbl_coinf',{paging:false,info:false});});</script>",
+            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_metadata');dt('tbl_phylogeny');dt('tbl_coinf',{paging:false,info:false});});</script>",
             "<script>function dlExcel(tid){var wb=XLSX.utils.book_new();var ws=XLSX.utils.table_to_sheet(document.getElementById(tid));XLSX.utils.book_append_sheet(wb,ws,tid);XLSX.writeFile(wb,'MKFluPipe_'+tid+'_'+new Date().toISOString().slice(0,10)+'.xlsx');}</script>",
             f"<script>const charts={json.dumps(charts, ensure_ascii=False)};",
             """
@@ -974,6 +1008,9 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         "  surveillance_report.html                   Interactive dashboard report\n"
         "  multiqc_report.html                        Full MultiQC report (copied when available)\n"
         "  metadata.csv                               Validated sample metadata (when provided)\n"
+        "  phylogeny/phylogeny_summary.tsv            HA/NA Augur tree status (when enabled)\n"
+        "  phylogeny/<group>/<group>.json             Auspice tree dataset for each generated group\n"
+        "  phylogeny/<group>/tree.nwk                 Newick tree for each generated group\n"
         "  coinfection/coinfection_report.tsv         Co-infection analysis per sample\n"
         "  antiviral_resistance/antiviral_resistance.tsv Antiviral resistance mutations\n"
         "  h5_virulence/h5_virulence_markers.tsv      H5 virulence markers (if detected)\n"
@@ -994,6 +1031,7 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         f"Protein mutation rows: {len(fullvar_rows)}",
         f"MultiQC report copied: {'yes' if local_multiqc else 'no'}",
         f"IRMA directories staged: {len(irma_paths)}",
+        f"Phylogeny groups: {len(phylogeny_rows)}",
     ]
     log_path.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
 

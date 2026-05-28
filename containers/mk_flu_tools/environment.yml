@@ -22,3 +22,5 @@ dependencies:
   - wget
   - curl
   - entrez-direct
+  - augur
+  - iqtree

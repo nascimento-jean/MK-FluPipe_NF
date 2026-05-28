@@ -27,9 +27,10 @@ jobs:
       - name: Validate schema and Python entry points
         run: |
           python -m json.tool nextflow_schema.json > /tmp/mkflupipe_schema.json
-          python -m py_compile bin/discover_samples.py bin/validate_metadata.py bin/run_surveillance_outputs.py
+          python -m py_compile bin/discover_samples.py bin/validate_metadata.py bin/run_phylogeny.py bin/run_surveillance_outputs.py
           python tests/check_discover_samples.py
           python tests/check_metadata.py
+          python tests/check_phylogeny.py
 
   nextflow-validation:
     name: Nextflow parameter validation
