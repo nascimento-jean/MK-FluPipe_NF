@@ -3,7 +3,7 @@
 
 # MK Flu-Pipe Nextflow
 
-**A reproducible DSL2 Nextflow workflow for Influenza short-read and long-read genomic surveillance**
+**A reproducible Nextflow DSL2 workflow for Influenza genomic surveillance from short-read and long-read data**
 
 [![Nextflow](https://img.shields.io/badge/Nextflow-DSL2-23aa62?style=for-the-badge)](https://www.nextflow.io/)
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?style=for-the-badge)](https://www.docker.com/)
@@ -16,169 +16,116 @@
 ---
 
 ## Contents
-- [1. Overview](#1-overview)
-- [2. What the pipeline does](#2-what-the-pipeline-does)
-- [3. Current implementation status](#3-current-implementation-status)
-- [4. Requirements](#4-requirements)
-- [5. Installation and setup](#5-installation-and-setup)
-- [6. Container strategy](#6-container-strategy)
-- [7. Running the pipeline](#7-running-the-pipeline)
-- [8. Parameters](#8-parameters)
-- [9. Outputs](#9-outputs)
-- [10. Databases and cache behavior](#10-databases-and-cache-behavior)
-- [11. Frequently asked questions](#11-frequently-asked-questions)
-- [12. Automated checks](#12-automated-checks)
-- [13. Citation](#13-citation)
 
-## 1. Overview
+- [Overview](#overview)
+- [Workflow Summary](#workflow-summary)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Containers](#containers)
+- [Running The Pipeline](#running-the-pipeline)
+- [Input Files](#input-files)
+- [Sample Metadata](#sample-metadata)
+- [Optional HA/NA Phylogeny](#optional-hana-phylogeny)
+- [Parameters](#parameters)
+- [Outputs](#outputs)
+- [Databases And Cache](#databases-and-cache)
+- [Automated Tests](#automated-tests)
+- [FAQ](#faq)
+- [Citation](#citation)
 
-`MK Flu-Pipe Nextflow` is the Nextflow DSL2 implementation of the MK Flu-Pipe Influenza workflow. It supports Illumina short-read and Oxford Nanopore long-read data, from raw FASTQ files to final surveillance tables, consensus FASTA files, variant summaries, GISAID-ready files, MultiQC reports, and an interactive HTML dashboard.
+## Overview
 
-The workflow supports:
-- short-read Illumina data;
-- long-read ONT data;
-- automatic sample discovery;
-- Docker and Singularity / Apptainer execution;
-- Linux, Ubuntu, and WSL environments;
-- tunable QC, preprocessing, assembly, variant calling, GISAID, and resource parameters.
+`MK Flu-Pipe Nextflow` is a containerized workflow for Influenza genomic surveillance. It supports Illumina short reads and Oxford Nanopore long reads and produces consensus FASTA files, assembly QC, typing and subtyping, Nextclade clades, antiviral resistance summaries, H5 virulence markers, protein mutation tables, GISAID-ready files, optional HA/NA phylogenies, and an interactive HTML dashboard.
 
-## 2. What the pipeline does
+The workflow is designed for local Linux/Ubuntu/WSL execution with Docker or Singularity/Apptainer. It can run complete analyses while keeping CPU, memory, and process concurrency configurable through Nextflow parameters.
+
+## Workflow Summary
 
 ### Short-read branch
 
-1. Sample discovery and automatic run planning.
-2. Raw read QC with `FastQC`.
-3. Read preprocessing with `fastp`.
-4. Optional host depletion with `Bowtie2`.
-5. Influenza assembly with `IRMA` using `FLU` or `FLU-utr`.
-6. Segment extraction and multi-sample segment FASTA generation.
-7. Assembly QC and depth summaries.
-8. Typing and subtyping with `BLAST`.
-9. Clade assignment with `Nextclade`.
-10. Canonical short-read variant calling with `iVar`.
-11. Antiviral resistance screening.
-12. H5 virulence marker screening when applicable.
-13. Full protein mutation calling against RefSeq segment references and GFF3 annotations.
-14. Coinfection / subtype mixing analysis.
-15. Final dashboard, surveillance tables, MultiQC copy, FASTA exports, and optional GISAID-ready files.
+1. Discover FASTQ files and build a run plan.
+2. Run raw-read QC with `FastQC`.
+3. Trim and filter reads with `fastp`.
+4. Optionally deplete host reads with `Bowtie2`.
+5. Assemble Influenza consensus sequences with `IRMA` using `FLU` or `FLU-utr`.
+6. Extract HA, NA, and other segment FASTA files.
+7. Run assembly QC and coverage summaries.
+8. Type and subtype samples with `BLAST`.
+9. Run clade assignment with `Nextclade`.
+10. Optionally call canonical variants with `iVar`.
+11. Screen antiviral resistance markers.
+12. Screen H5 virulence markers when relevant.
+13. Optionally run full protein mutation calling.
+14. Detect coinfection or subtype-mixing signals.
+15. Optionally build HA/NA phylogenies with `Augur`.
+16. Generate surveillance outputs and the HTML dashboard.
 
 ### Long-read branch
 
-1. Sample discovery and automatic run planning.
-2. Raw read QC with `FastQC`.
-3. Read preprocessing with `Filtlong`.
-4. Optional host depletion with `minimap2`.
-5. Influenza assembly with `IRMA` using `FLU-minion`.
-6. Segment extraction and multi-sample segment FASTA generation.
-7. Assembly QC and depth summaries.
-8. Typing and subtyping with `BLAST`.
-9. Clade assignment with `Nextclade`.
-10. Canonical long-read variant calling with `Medaka`.
-11. Antiviral resistance screening.
-12. H5 virulence marker screening when applicable.
-13. Full protein mutation calling against RefSeq segment references and GFF3 annotations.
-14. Coinfection / subtype mixing analysis.
-15. Final dashboard, surveillance tables, MultiQC copy, FASTA exports, and optional GISAID-ready files.
+1. Discover FASTQ files and build a run plan.
+2. Run raw-read QC with `FastQC`.
+3. Filter long reads with `Filtlong`.
+4. Optionally deplete host reads with `minimap2`.
+5. Assemble Influenza consensus sequences with `IRMA` using `FLU-minion`.
+6. Extract HA, NA, and other segment FASTA files.
+7. Run assembly QC and coverage summaries.
+8. Type and subtype samples with `BLAST`.
+9. Run clade assignment with `Nextclade`.
+10. Optionally call canonical variants with `Medaka`.
+11. Screen antiviral resistance markers.
+12. Screen H5 virulence markers when relevant.
+13. Optionally run full protein mutation calling.
+14. Detect coinfection or subtype-mixing signals.
+15. Optionally build HA/NA phylogenies with `Augur`.
+16. Generate surveillance outputs and the HTML dashboard.
 
-## 3. Current implementation status
+## Requirements
 
-The following modules are implemented in the current Nextflow version:
-- sample discovery and run planning;
-- `FastQC`;
-- `fastp`;
-- `Filtlong`;
-- host depletion with `Bowtie2` and `minimap2`;
-- `IRMA` short-read and long-read branches;
-- IRMA failure status reporting without stopping the full run when a sample fails QC/assembly;
-- segment extraction and segment merging;
-- assembly QC and `samtools depth` summaries;
-- `BLAST` typing;
-- `Nextclade`;
-- canonical short-read variant calling with `iVar`;
-- canonical long-read variant calling with `Medaka`;
-- antiviral resistance analysis;
-- H5 virulence analysis;
-- full protein mutation calling;
-- coinfection and subtype mixing analysis;
-- MultiQC aggregation;
-- GISAID-ready FASTA and metadata exports;
-- interactive HTML dashboard and final surveillance output generation.
+Recommended system:
 
-## 4. Requirements
+- Linux, Ubuntu, or WSL2.
+- Nextflow `>=23.10.0`.
+- Docker or Singularity/Apptainer.
+- Internet access for the first database/container setup.
+- At least 8 GB RAM for small tests.
+- 16-32 GB RAM recommended for larger batches.
+- Enough disk space for `work/`, `mk_flupipe_db/`, intermediate FASTQ files, and final outputs.
 
-Recommended environment:
-- Linux, Ubuntu, or WSL;
-- `Nextflow` installed and available in `PATH`;
-- either `Docker` or `Singularity / Apptainer`;
-- internet access during the first run for database and image downloads;
-- at least 8 GB RAM for very small tests;
-- 16 GB to 32 GB RAM recommended for larger short-read runs;
-- sufficient disk space for `work/`, downloaded databases, intermediate FASTQ files, and final results.
-
-## 5. Installation and setup
-
-### 5.1. Clone the repository
+## Installation
 
 ```bash
 git clone https://github.com/nascimento-jean/MK-FluPipe_NF.git
 cd MK-FluPipe_NF
-```
-
-### 5.2. Confirm Nextflow
-
-```bash
 nextflow -version
 ```
 
-### 5.3. What is versioned in GitHub
+The repository contains workflow code, modules, helper scripts, documentation, tests, and container recipes. It does not store prebuilt `.sif` files, downloaded databases, Nextflow `work/`, or analysis outputs.
 
-The GitHub repository stores workflow source code, modules, helper scripts, documentation, and container build recipes.
-
-The repository does not store:
-- prebuilt Docker images;
-- prebuilt Singularity `.sif` images;
-- downloaded databases under `mk_flupipe_db/`;
-- execution outputs;
-- `work/` directories;
-- Nextflow cache files.
-
-After cloning, the normal flow is:
-1. build or pull the required containers;
-2. run the pipeline;
-3. let the pipeline download or rebuild required databases automatically.
-
-## 6. Container strategy
+## Containers
 
 The workflow uses three container groups:
-- `irma_tools`: resolved to `cdcgov/irma:v1.3.2`;
-- `mk_flu_tools`: local image with the main workflow tool stack;
-- `medaka_tools`: local image with Medaka-related tools.
 
-### 6.1. Build local Docker images
+| Container group | Purpose |
+|---|---|
+| `irma_tools` | IRMA assembly through `cdcgov/irma:v1.3.2`. |
+| `mk_flu_tools` | Main workflow tools including FastQC, fastp, Filtlong, BLAST, Nextclade, Augur, IQ-TREE, and helper scripts. |
+| `medaka_tools` | Medaka-related tools for long-read variant analysis. |
+
+Build Docker images:
 
 ```bash
 bash containers/build_docker_images.sh
 ```
 
-This creates:
-- `mk-flu-pipe/mk_flu_tools:local`
-- `mk-flu-pipe/medaka_tools:local`
-
-### 6.2. Build local Singularity / Apptainer images
+Build Singularity/Apptainer images:
 
 ```bash
 bash containers/build_singularity_images.sh
 ```
 
-This creates:
-- `containers/sif/mk_flu_tools_local.sif`
-- `containers/sif/medaka_tools_local.sif`
+## Running The Pipeline
 
-## 7. Running the pipeline
-
-### 7.1. Recommended profiles
-
-Use the base `linux` profile together with one execution backend:
+Use the `linux` profile together with either `docker` or `singularity`.
 
 ```bash
 -profile linux,docker
@@ -190,9 +137,9 @@ or:
 -profile linux,singularity
 ```
 
-The `wsl` and `ubuntu` profiles remain as compatibility aliases, but `linux` is the recommended profile.
+The `wsl` and `ubuntu` profiles are retained as compatibility aliases, but `linux` is the recommended profile.
 
-### 7.2. Short-read example
+### Minimal short-read example
 
 ```bash
 nextflow run main.nf \
@@ -209,7 +156,7 @@ nextflow run main.nf \
   --run_fullvarcall true
 ```
 
-### 7.3. Long-read example
+### Minimal long-read example
 
 ```bash
 nextflow run main.nf \
@@ -226,7 +173,7 @@ nextflow run main.nf \
   --run_fullvarcall true
 ```
 
-### 7.4. Example with QC, GISAID, and resource parameters
+### Full short-read example with QC, GISAID, metadata, phylogeny, and resources
 
 ```bash
 nextflow run main.nf \
@@ -253,157 +200,252 @@ nextflow run main.nf \
   --run_phylogeny true \
   --phylogeny_context_fasta /path/to/context_ha_na.fasta \
   --phylogeny_context_metadata /path/to/context_ha_na.csv \
+  --phylogeny_min_sequences 3 \
+  --phylogeny_threads 4 \
+  --max_cpus 8 \
+  --max_memory "24 GB" \
+  --queue_size 2 \
+  --run_ivar true \
+  --run_fullvarcall true
+```
+
+### Full long-read example with metadata and phylogeny
+
+```bash
+nextflow run main.nf \
+  -resume \
+  -profile linux,singularity \
+  --input_dir /path/to/FLU_long/ \
+  --output_dir mk-flupipe_long_results \
+  --irma_module FLU-minion \
+  --seq_type long \
+  --host_depletion true \
+  --min_len_long 200 \
+  --max_len_long 0 \
+  --filtlong_min_mean_q 10 \
+  --run_medaka true \
+  --run_antiviral true \
+  --run_h5_virulence true \
+  --run_fullvarcall true \
+  --metadata_csv /path/to/sample_metadata.csv \
+  --run_phylogeny true \
+  --phylogeny_context_fasta /path/to/context_ha_na.fasta \
+  --phylogeny_context_metadata /path/to/context_ha_na.csv \
   --max_cpus 8 \
   --max_memory "24 GB" \
   --queue_size 2
 ```
 
-### 7.5. Default behavior
+All parameters have defaults in `nextflow.config`. If a parameter is omitted, the workflow uses the configured default value.
 
-All parameters have defaults in `nextflow.config`. If you do not provide a parameter on the command line, the pipeline uses the default value.
+## Input Files
 
-The formal parameter contract is available in:
+The pipeline expects FASTQ or FASTQ.GZ files in `--input_dir`.
 
-```text
-nextflow_schema.json
-```
-
-Example parameter files are available in:
+For common Illumina names such as:
 
 ```text
-params.example.yml
-params.long.example.yml
+261118000051_S40_L001_R1_001.fastq.gz
+261118000051_S40_L001_R2_001.fastq.gz
 ```
 
-## 8. Parameters
+the reported sample ID is:
 
-### 8.1. Required and core run parameters
+```text
+261118000051
+```
 
-| Parameter | Default | Description |
-|---|---:|---|
-| `--input_dir` | `null` | Folder containing input FASTQ / FASTQ.GZ files. Required for normal runs. |
-| `--output_dir` | `${projectDir}/results` | Folder where all outputs will be written. |
-| `--irma_module` | `null` | IRMA module to use. Common values are `FLU-utr` for short reads and `FLU-minion` for long reads. |
-| `--seq_type` | `auto` | Sequencing type. Use `auto`, `short`, or `long`. |
-| `--seq_mode` | empty | Optional discovery mode hint used by sample discovery and legacy compatibility. Usually left empty. |
+The technical Illumina `_S<number>` token is removed so metadata can use biological/sample identifiers rather than sequencing-lane identifiers.
 
-For ONT long-read runs, use `--seq_type long` and `--irma_module FLU-minion`. The pipeline intentionally does not infer long-read mode from `--seq_type auto`.
+## Sample Metadata
 
-### 8.2. Analysis switches
+`--metadata_csv` is optional for the dashboard metadata tab, but required when `--run_phylogeny true`.
 
-| Parameter | Default | Description |
-|---|---:|---|
-| `--run_fastqc` | `true` | Run raw-read FastQC. |
-| `--host_depletion` | `false` | Enable host depletion. Short reads use `Bowtie2`; long reads use `minimap2`. |
-| `--run_ivar` | `false` | Enable canonical short-read variant calling with `iVar`. |
-| `--run_medaka` | `false` | Enable canonical long-read variant calling with `Medaka`. |
-| `--run_antiviral` | `true` | Enable antiviral resistance analysis. |
-| `--run_h5_virulence` | `true` | Enable H5 virulence marker analysis. |
-| `--run_fullvarcall` | `false` | Enable full protein mutation calling against RefSeq segment references. |
+Required columns:
 
-For long-read antiviral resistance analysis, `--run_medaka true` is required because canonical long-read variants are produced with Medaka.
-| `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
-| `--legacy_script` | empty | Path to the optional legacy Bash script used only when `--run_legacy_bridge true`. |
+| Column | Description |
+|---|---|
+| `sample_name` | Sample identifier after pipeline discovery. It must match the sample IDs detected from FASTQ names. |
+| `collection_date` | Sampling date in ISO format: `YYYY-MM-DD`. |
 
-### 8.3. Short-read preprocessing parameters
+Optional columns:
 
-| Parameter | Default | Description |
-|---|---:|---|
-| `--adapter_fasta` | empty | Optional adapter FASTA passed to `fastp`. If empty, paired-end adapter detection is used. |
-| `--min_len_short` | `75` | Minimum read length retained by `fastp` for short reads. |
-| `--min_qual` | `20` | Minimum qualified base quality threshold used by `fastp`. |
-
-### 8.4. Long-read preprocessing parameters
-
-| Parameter | Default | Description |
-|---|---:|---|
-| `--min_len_long` | `200` | Minimum long-read length retained by `Filtlong`. |
-| `--max_len_long` | `0` | Maximum long-read length retained by `Filtlong`; `0` disables the upper limit. |
-| `--filtlong_min_mean_q` | `null` | Optional minimum mean read quality for `Filtlong`. If null, this filter is not applied. |
-
-### 8.5. Assembly QC and segment filters
-
-| Parameter | Default | Description |
-|---|---:|---|
-| `--min_coverage` | `50` | Minimum coverage threshold used by assembly QC and related summaries. |
-| `--max_n_pct` | `10` | Maximum allowed percentage of `N` bases before a segment/sample is flagged. |
-| `--min_segments` | `4` | Minimum number of detected segments expected for downstream reporting. |
-
-### 8.6. Variant, resistance, and coinfection parameters
-
-| Parameter | Default | Description |
-|---|---:|---|
-| `--ivar_freq` | `0.03` | Minimum allele frequency used by `iVar` variant calling. |
-| `--ivar_depth` | `10` | Minimum depth used by `iVar` variant calling. |
-| `--minority_freq` | `0.20` | Frequency threshold used for minority variant interpretation. |
-| `--coinfection_pct` | `5.0` | Percentage threshold used to flag possible coinfection or subtype mixing. |
-| `--medaka_env` | `medaka_env` | Medaka environment name retained for compatibility with legacy logic. Containerized execution does not require activating this environment manually. |
-
-### 8.7. GISAID parameters
-
-| Parameter | Default | Description |
-|---|---:|---|
-| `--gisaid_location` | empty | Location string used to create GISAID-style isolate names and to enable `GISAID_ready/` outputs. If empty, GISAID-ready files are not generated. |
-| `--gisaid_year` | `null` | Year used in GISAID-style isolate names. If empty, the current year is used. |
-
-### 8.8. Sample metadata for phylogenetic extensions
-
-| Parameter | Default | Description |
-|---|---:|---|
-| `--metadata_csv` | empty | Optional CSV with sample metadata to validate, report, and use for phylogenetic analyses. Required columns are `sample_name` and `collection_date`; optional geographic columns include `country`, `state`, `city`, and `location`. |
-
-When provided, `sample_name` must exactly match every sample ID discovered from the FASTQ filenames and `collection_date` must use ISO format (`YYYY-MM-DD`). Each discovered sample must occur exactly once. For standard Illumina paired files such as `261118000051_S40_L001_R1_001.fastq.gz`, the technical sample-number suffix is omitted and the expected metadata identifier is `261118000051`.
+| Column | Description |
+|---|---|
+| `country` | Country used in reporting and phylogeny metadata. |
+| `state` | State, province, department, region, or other subnational locality. Used to color context sequences in Auspice trees. |
+| `city` | City or municipality. |
+| `location` | Optional combined location field retained for compatibility. |
 
 Example:
 
 ```csv
 sample_name,collection_date,country,state,city
-SAMPLE_A,2026-05-24,Brazil,Alagoas,Maceio
+261118000051,2026-02-20,Brazil,Alagoas,Maceio
+261118000052,2026-02-23,Brazil,Alagoas,Maceio
 ```
 
-The validated table is exported as `Surveillance_Outputs/metadata.csv` and is displayed in a `Metadata` dashboard tab.
+When metadata is supplied, the workflow validates that every discovered sample appears exactly once. The validated table is exported to `Surveillance_Outputs/metadata.csv` and displayed in the dashboard.
 
-### 8.9. Optional HA/NA phylogeny with Augur
+## Optional HA/NA Phylogeny
 
-The optional phylogeny module generates trees only for the biologically informative surface segments `HA` and `NA`. Influenza A trees are separated by subtype (for example, `A_H3_HA` and `A_N2_NA`), while Influenza B produces `B_HA` and `B_NA` trees. The module uses the consensus FASTA generated by the pipeline, so the same implementation is available for validated short-read and long-read runs.
+The optional phylogeny module builds trees for HA and NA only. These segments are the most useful for Influenza subtype-specific surveillance and contextual comparison.
 
-| Parameter | Default | Description |
-|---|---:|---|
-| `--run_phylogeny` | `false` | Run the optional Augur HA/NA phylogeny module. Requires `--metadata_csv`. |
-| `--phylogeny_context_fasta` | empty | Optional contextual HA/NA FASTA selected from public NCBI records or manually downloaded by an authorized GISAID user. |
-| `--phylogeny_context_metadata` | empty | CSV/TSV metadata matching context FASTA records. It must be supplied together with `--phylogeny_context_fasta`. |
-| `--phylogeny_min_sequences` | `3` | Minimum total sequence count required to generate each independent tree. |
-| `--phylogeny_threads` | `4` | Maximum threads requested by Augur/MAFFT/IQ-TREE. |
+Tree grouping:
 
-Context metadata records must include `strain`, `collection_date`, `type`, and `segment`. Influenza A context records must also provide the relevant `subtype_HA` or `subtype_NA`; optional columns are `country`, `state`, `city`, and `source`. The `strain` value must match the corresponding FASTA identifier.
+| Virus group | Tree grouping behavior |
+|---|---|
+| Influenza A | Separate trees by subtype and segment, such as `A_H1_HA`, `A_H3_HA`, `A_H5_HA`, `A_N1_NA`, `A_N2_NA`, or `A_N3_NA`. |
+| Influenza B | Separate trees by segment only: `B_HA` and `B_NA`. |
+
+The module uses the consensus segment FASTA files produced by the pipeline, so the same implementation works for short-read and long-read runs.
+
+Required for phylogeny:
+
+- `--run_phylogeny true`
+- `--metadata_csv`
+- valid HA/NA segment FASTA files generated by the pipeline
+
+Optional context files:
+
+- `--phylogeny_context_fasta`
+- `--phylogeny_context_metadata`
+
+Context metadata must match the context FASTA identifiers.
+
+Required context metadata columns:
+
+| Column | Description |
+|---|---|
+| `strain` | FASTA record identifier for the context sequence. |
+| `collection_date` | Sampling date in ISO format: `YYYY-MM-DD`. |
+| `type` | Influenza type: `A` or `B`. |
+| `segment` | `HA` or `NA`. |
+
+Required for Influenza A context records:
+
+| Column | Description |
+|---|---|
+| `subtype_HA` | HA subtype for HA records, such as `H1`, `H3`, or `H5`. |
+| `subtype_NA` | NA subtype for NA records, such as `N1`, `N2`, or `N3`. |
+
+Optional context metadata columns:
+
+| Column | Description |
+|---|---|
+| `country` | Country for context sequence metadata. |
+| `state` | Locality used to color context tips in Auspice. This can be any user-provided subnational or regional value, not only Brazilian states. |
+| `city` | City or municipality. |
+| `source` | Source label such as `NCBI`, `GISAID`, or `LocalContext`. |
+
+Example context metadata:
 
 ```csv
-strain,collection_date,type,segment,subtype_HA,subtype_NA,country,state,source
-NCBI_H3_HA_001,2025-10-15,A,HA,H3,N2,Brazil,Alagoas,NCBI
-GISAID_B_NA_001,2025-11-03,B,NA,-,-,Brazil,Alagoas,GISAID
+strain,collection_date,type,segment,subtype_HA,subtype_NA,country,state,city,source
+NCBI_H3_HA_001,2025-10-15,A,HA,H3,N2,Brazil,Alagoas,Maceio,NCBI
+GISAID_H3_NA_001,2025-10-15,A,NA,H3,N2,Brazil,Sao Paulo,Sao Paulo,GISAID
+GISAID_B_HA_001,2025-11-03,B,HA,-,-,Argentina,Buenos Aires,Buenos Aires,GISAID
 ```
 
-GISAID sequences are not downloaded automatically by this pipeline. If GISAID context is used, it must be downloaded by an authorized user and analyzed locally in accordance with GISAID terms. NCBI context can be supplied with the same interface; automated NCBI retrieval will be added only after a reproducible context-selection policy is defined.
+Coloring in Auspice:
 
-### 8.10. Resource and concurrency parameters
+- pipeline-generated sequences are labeled `User Sequences` and colored dark red (`#8B0000`);
+- context sequences are colored dynamically by the `state` column from the context metadata;
+- missing context locality values are shown as `State not available`;
+- the time-scaled tree uses `collection_date`; coloring does not replace temporal dating.
+
+GISAID sequences are not downloaded automatically. If GISAID context is used, authorized users must download the sequences and metadata themselves and analyze them locally according to GISAID terms. NCBI or other public context datasets can be supplied through the same FASTA/metadata interface.
+
+## Parameters
+
+### Core run parameters
 
 | Parameter | Default | Description |
 |---|---:|---|
-| `--max_cpus` | `null` | Global CPU cap per process. If omitted, each process uses its configured default. |
-| `--max_memory` | `null` | Global memory cap per process, for example `"24 GB"`. If omitted, each process uses its configured default. |
-| `--queue_size` | `8` | Local executor queue size. Controls how many tasks Nextflow may submit concurrently. |
-| `--fastqc_threads` | `2` | CPU threads requested by `RUN_FASTQC`. |
-| `--fastp_threads` | `2` | CPU threads requested by `RUN_FASTP`. |
-| `--host_depletion_threads` | `2` | CPU threads requested by host depletion processes. |
-| `--irma_threads` | `4` | CPU threads requested by IRMA processes. |
-| `--fastp_max_forks` | `2` | Maximum number of concurrent `RUN_FASTP` tasks. |
-| `--fastp_timeout` | `1800` | Hard timeout in seconds for a `fastp` task. Exit code `124` is retried by Nextflow. |
-| `--fastp_startup_timeout` | `300` | Startup watchdog in seconds. If `fastp` produces no output during this window, the attempt is killed and retried. |
-| `--host_depletion_max_forks` | `2` | Maximum number of concurrent host depletion tasks. |
-| `--irma_max_forks` | `2` | Maximum number of concurrent IRMA tasks. |
-| `--phylogeny_threads` | `4` | Maximum threads requested by the optional Augur HA/NA tree process. |
+| `--input_dir` | `null` | Directory with FASTQ or FASTQ.GZ input files. Required. |
+| `--output_dir` | `${projectDir}/results` | Output directory. |
+| `--irma_module` | `null` | IRMA module. Use `FLU-utr` for short reads and `FLU-minion` for long reads. |
+| `--seq_type` | `auto` | Sequencing type: `auto`, `short`, or `long`. For ONT runs, explicitly use `long`. |
+| `--seq_mode` | empty | Optional discovery-mode hint retained for compatibility. Usually left empty. |
 
-### 8.11. Container parameters
+### Analysis switches
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--run_fastqc` | `true` | Run raw-read FastQC. |
+| `--host_depletion` | `false` | Enable host depletion. Short reads use Bowtie2; long reads use minimap2. |
+| `--run_ivar` | `false` | Enable canonical short-read variant calling with iVar. |
+| `--run_medaka` | `false` | Enable canonical long-read variant calling with Medaka. Required for long-read antiviral resistance analysis. |
+| `--run_antiviral` | `true` | Run antiviral resistance analysis. |
+| `--run_h5_virulence` | `true` | Run H5 virulence marker analysis. |
+| `--run_fullvarcall` | `false` | Run full protein mutation calling. |
+| `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
+| `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
+
+### Short-read preprocessing parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--adapter_fasta` | empty | Optional adapter FASTA passed to fastp. If empty, paired-end adapter detection is used. |
+| `--min_len_short` | `75` | Minimum read length retained by fastp. |
+| `--min_qual` | `20` | Minimum qualified base quality threshold used by fastp. |
+
+### Long-read preprocessing parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--min_len_long` | `200` | Minimum long-read length retained by Filtlong. |
+| `--max_len_long` | `0` | Maximum long-read length retained by Filtlong. `0` disables the upper limit. |
+| `--filtlong_min_mean_q` | `null` | Optional minimum mean long-read quality for Filtlong. |
+
+### Assembly QC, variant, and interpretation parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--min_coverage` | `50` | Minimum segment coverage threshold for assembly QC and reporting. |
+| `--max_n_pct` | `10` | Maximum allowed percentage of `N` bases before flagging. |
+| `--min_segments` | `4` | Minimum number of detected segments expected for downstream reporting. |
+| `--ivar_freq` | `0.03` | Minimum allele frequency used by iVar. |
+| `--ivar_depth` | `10` | Minimum depth used by iVar. |
+| `--minority_freq` | `0.20` | Frequency threshold for minority variant interpretation. |
+| `--coinfection_pct` | `5.0` | Percentage threshold used to flag possible coinfection or subtype mixing. |
+| `--medaka_env` | `medaka_env` | Compatibility value for legacy Medaka logic. Containerized runs do not require manual activation. |
+
+### GISAID parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--gisaid_location` | empty | Location string used to create GISAID-style isolate names and enable `GISAID_ready/` outputs. |
+| `--gisaid_year` | `null` | Year used in GISAID-style isolate names. If omitted, the current year is used. |
+
+### Metadata and phylogeny parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--metadata_csv` | empty | Optional sample metadata CSV. Required for `--run_phylogeny true`. |
+| `--phylogeny_context_fasta` | empty | Optional HA/NA FASTA with context sequences from NCBI or manually downloaded GISAID data. |
+| `--phylogeny_context_metadata` | empty | Metadata CSV/TSV matching the context FASTA. Must be supplied together with `--phylogeny_context_fasta`. |
+| `--phylogeny_min_sequences` | `3` | Minimum total sequence count required before each independent tree is generated. |
+| `--phylogeny_threads` | `4` | Maximum threads requested by Augur, MAFFT, and IQ-TREE. |
+
+### Resource and concurrency parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--max_cpus` | `null` | Global CPU cap per process. |
+| `--max_memory` | `null` | Global memory cap per process, for example `"24 GB"`. |
+| `--queue_size` | `8` | Local executor queue size. |
+| `--fastqc_threads` | `2` | Threads requested by FastQC. |
+| `--fastp_threads` | `2` | Threads requested by fastp. |
+| `--host_depletion_threads` | `2` | Threads requested by host depletion processes. |
+| `--irma_threads` | `4` | Threads requested by IRMA tasks. |
+| `--fastp_max_forks` | `2` | Maximum concurrent fastp tasks. |
+| `--fastp_timeout` | `1800` | Hard timeout in seconds for a fastp task. |
+| `--fastp_startup_timeout` | `300` | Startup watchdog in seconds for fastp. |
+| `--host_depletion_max_forks` | `2` | Maximum concurrent host depletion tasks. |
+| `--irma_max_forks` | `2` | Maximum concurrent IRMA tasks. |
+
+### Container and reference parameters
 
 | Parameter | Default | Description |
 |---|---:|---|
@@ -414,225 +456,146 @@ GISAID sequences are not downloaded automatically by this pipeline. If GISAID co
 | `--medaka_singularity_image` | `${projectDir}/containers/sif/medaka_tools_local.sif` | Singularity image for Medaka tools. |
 | `--irma_singularity_image` | `docker://cdcgov/irma:v1.3.2` | Singularity/Apptainer IRMA image source. |
 | `--singularity_cache_dir` | `${HOME}/.singularity/cache` | Singularity cache directory. |
-| `--container_uid` | `1000` | Container user ID helper value. |
-| `--container_gid` | `1000` | Container group ID helper value. |
+| `--human_db_dir` | `${HOME}/mk_flupipe_db/human_genome` | Human reference/index directory. |
+| `--blast_db_dir` | `${HOME}/mk_flupipe_db` | Influenza database/cache directory. |
+| `--nextclade_datasets_dir` | `${params.blast_db_dir}/nextclade_datasets` | Cached Nextclade datasets. |
+| `--canonical_refs_dir` | `${params.blast_db_dir}/canonical_refs` | Canonical reference directory. |
+| `--refseq_segments_dir` | `${params.blast_db_dir}/refseq_segments` | RefSeq segment references and GFF3 files. |
 
-### 8.10. Database and reference parameters
+The complete parameter contract is documented in `nextflow_schema.json`. Example parameter files are provided in `params.example.yml` and `params.long.example.yml`.
 
-| Parameter | Default | Description |
-|---|---:|---|
-| `--human_db_dir` | `${HOME}/mk_flupipe_db/human_genome` | Human genome and host depletion index directory. Docker/Singularity profiles reset this under `${projectDir}/mk_flupipe_db`. |
-| `--human_fasta_name` | `GRCh38_no_alt.fna` | Human reference FASTA filename. |
-| `--human_index_prefix` | `GRCh38` | Bowtie2 human index prefix. |
-| `--human_genome_url` | NCBI GRCh38 URL | URL used to download the human reference FASTA. |
-| `--blast_db_dir` | `${HOME}/mk_flupipe_db` | Influenza database/cache directory. Docker/Singularity profiles reset this under `${projectDir}/mk_flupipe_db`. |
-| `--blast_db_fasta` | `${params.blast_db_dir}/influenza.fna` | Influenza BLAST FASTA path. |
-| `--blast_db_prefix` | `${params.blast_db_dir}/influenza_blast_db` | BLAST database prefix. |
-| `--blast_db_timestamp` | `${params.blast_db_dir}/.last_update` | Timestamp file used to decide whether the BLAST database should be refreshed. |
-| `--blast_db_url` | NCBI Influenza FTP URL | URL used to download the Influenza BLAST FASTA. |
-| `--blast_db_max_days` | `30` | Maximum BLAST database age before refresh. |
-| `--nextclade_datasets_dir` | `${params.blast_db_dir}/nextclade_datasets` | Directory for cached Nextclade datasets. |
-| `--nextclade_max_days` | `30` | Maximum Nextclade dataset age before refresh. |
-| `--canonical_refs_dir` | `${params.blast_db_dir}/canonical_refs` | Directory for canonical references. |
-| `--refseq_segments_dir` | `${params.blast_db_dir}/refseq_segments` | Directory for RefSeq segment references and GFF3 files used by full variant calling. |
+## Outputs
 
-## 9. Outputs
+All outputs are written under `--output_dir`.
 
-The workflow writes all results under `--output_dir`.
+### Main output folders
 
-### 9.1. Top-level output folders
-
-| Path | What it contains |
+| Path | Contents |
 |---|---|
-| `bootstrap/` | Discovered sample tables, run planning files, and metadata used to start the workflow. |
-| `qc_reports/` | QC reports and tabular QC summaries used by the dashboard and MultiQC. |
-| `preprocessed_reads/` | Reads after `fastp` or `Filtlong`. |
-| `depleted_reads/` | Reads after host depletion with `Bowtie2` or `minimap2`. |
-| `irma_runs_short/` | Per-sample IRMA short-read run directories. |
-| `irma_runs_long/` | Per-sample IRMA long-read run directories. |
-| `assembly_final/` | Final consensus FASTA files, segment FASTA files, typing, Nextclade, resistance, H5, coinfection, and assembly QC outputs. |
-| `depth_per_position/` | Per-sample depth tables generated from final alignments. |
-| `variant_calls/` | Canonical variant calling outputs from `iVar` or Medaka variant workflows. |
+| `bootstrap/` | Discovered sample sheets, run planning files, and optional validated metadata. |
+| `qc_reports/` | FastQC, fastp/Filtlong, host depletion, assembly QC, depth summaries, and MultiQC inputs/reports. |
+| `preprocessed_reads/` | Reads after fastp or Filtlong. |
+| `depleted_reads/` | Reads after host depletion when enabled. |
+| `irma_runs_short/` | Per-sample short-read IRMA run directories. |
+| `irma_runs_long/` | Per-sample long-read IRMA run directories. |
+| `assembly_final/` | Final consensus FASTA files, segment FASTA files, typing, Nextclade, QC, resistance, H5, coinfection, and phylogeny inputs. |
+| `depth_per_position/` | Per-sample depth tables. |
+| `variant_calls/` | Canonical short-read or Medaka variant outputs. |
 | `variant_calls_canonical_long/` | Long-read canonical Medaka outputs. |
-| `full_variant_calls/` | Full protein mutation reports and merged protein mutation table. |
-| `Surveillance_Outputs/` | Main final delivery folder with dashboard, integrated tables, FASTA exports, GISAID-ready files, and copied final reports. |
-| `legacy_bridge/` | Optional outputs only when `--run_legacy_bridge true` is used. |
+| `full_variant_calls/` | Per-sample and merged full protein mutation reports. |
+| `Surveillance_Outputs/` | Main final delivery folder for dashboard, final tables, FASTA exports, GISAID-ready files, metadata, and phylogeny outputs. |
+| `legacy_bridge/` | Optional legacy bridge outputs when enabled. |
 
-### 9.2. QC outputs
+### Final surveillance outputs
 
-| Path | What it contains |
+| Path | Contents |
 |---|---|
-| `qc_reports/fastqc_raw/` | Raw FastQC output folders for each sample. |
-| `qc_reports/fastp/` | `fastp` HTML and JSON reports for short-read runs. |
-| `qc_reports/filtlong/` | `Filtlong` statistics tables for long-read runs. |
-| `qc_reports/host_depletion_bowtie2/` | Short-read host depletion logs and statistics. |
-| `qc_reports/host_depletion_minimap2/` | Long-read host depletion logs and statistics. |
-| `qc_reports/assembly_qc/` | Per-sample assembly QC tables. |
-| `qc_reports/samtools_depth/` | Per-sample depth summary tables. |
-| `qc_reports/multiqc/` | Full MultiQC report folder. |
-
-### 9.3. Assembly and typing outputs
-
-| Path | What it contains |
-|---|---|
-| `assembly_final/*.fasta` | Final normalized consensus FASTA files copied from successful IRMA outputs. Degenerate bases are converted to `N`. |
-| `assembly_final/irma_status.tsv` | Per-sample IRMA status report, including samples that failed to produce amended consensus sequences. |
-| `assembly_final/segments/` | Single-segment FASTA files and merged multi-sample segment FASTA files. |
-| `assembly_final/assembly_qc_report.tsv` | Merged assembly QC summary across samples. |
-| `assembly_final/depth_summary.tsv` | Merged depth summary across samples. |
-| `assembly_final/blast_results/blast_typing_summary.tsv` | BLAST-based type, HA, NA, and hit metadata summary. |
-| `assembly_final/nextclade_results/nextclade_summary.tsv` | Nextclade clade, dataset, and QC summary. |
-| `assembly_final/coinfection/coinfection_report.tsv` | Coinfection and subtype mixing summary per sample. |
-
-### 9.4. Variant, resistance, and mutation outputs
-
-| Path | What it contains |
-|---|---|
-| `variant_calls/` | Canonical variant calling outputs from `iVar` or Medaka variant runs. |
-| `variant_calls_canonical_long/` | Long-read canonical Medaka outputs used for downstream interpretation. |
-| `assembly_final/antiviral_resistance/antiviral_resistance.tsv` | Antiviral resistance calls based on canonical references. |
-| `assembly_final/h5_virulence/h5_virulence_markers.tsv` | H5 virulence marker results when H5 is detected. |
-| `full_variant_calls/*.fullvarcall` | Per-sample full protein mutation reports. |
-| `full_variant_calls/all_samples_protein_mutations.tsv` | Consolidated protein mutation table across all processed samples. |
-
-### 9.5. Final surveillance outputs
-
-`Surveillance_Outputs/` is the main folder for end users.
-
-| Path | What it contains |
-|---|---|
-| `Surveillance_Outputs/surveillance_report.html` | Interactive final HTML dashboard with Overview, QC Dashboard, Typing, Resistance and H5, Coinfection, Protein Mutations, optional Metadata/Phylogeny, and Downloads tabs. |
+| `Surveillance_Outputs/surveillance_report.html` | Interactive dashboard with Overview, QC Dashboard, Typing, Resistance and H5, Coinfection, Protein Mutations, optional Metadata/Phylogeny, and Downloads tabs. |
 | `Surveillance_Outputs/multiqc_report.html` | Copy of the full MultiQC report when available. |
 | `Surveillance_Outputs/typing_results.tsv` | Integrated typing table combining BLAST, Nextclade, assembly QC, and hit metadata. |
 | `Surveillance_Outputs/coverage_per_segment.tsv` | Per-segment coverage summary. |
-| `Surveillance_Outputs/preprocessing_summary.tsv` | `fastp` or `Filtlong` preprocessing summary used by the dashboard. |
-| `Surveillance_Outputs/host_depletion_summary.tsv` | Read count and retention summary before and after host depletion. |
+| `Surveillance_Outputs/preprocessing_summary.tsv` | fastp or Filtlong summary table. |
+| `Surveillance_Outputs/host_depletion_summary.tsv` | Read counts before and after host depletion. |
 | `Surveillance_Outputs/run_summary.tsv` | Compact integrated per-sample run summary. |
 | `Surveillance_Outputs/run_summary.json` | JSON version of the integrated run summary. |
-| `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA. Segment headers are preserved and degenerate bases are converted to `N`. |
-| `Surveillance_Outputs/metadata.csv` | Validated sample metadata exported only when `--metadata_csv` is provided. |
-| `Surveillance_Outputs/phylogeny/phylogeny_summary.tsv` | Tree-generation status per HA/NA analysis group when `--run_phylogeny true`. |
-| `Surveillance_Outputs/phylogeny/<group>/<group>.json` | Auspice-compatible JSON dataset for each generated HA/NA tree. |
-| `Surveillance_Outputs/phylogeny/<group>/tree.nwk` | Refined Newick tree for each generated HA/NA group. |
-| `Surveillance_Outputs/coinfection/coinfection_report.tsv` | Final coinfection table copied for dashboard and download access. |
-| `Surveillance_Outputs/antiviral_resistance/antiviral_resistance.tsv` | Final antiviral resistance table copied for dashboard and download access. |
-| `Surveillance_Outputs/h5_virulence/h5_virulence_markers.tsv` | Final H5 virulence marker table copied for dashboard and download access. |
-| `Surveillance_Outputs/full_variant_calls/all_samples_protein_mutations.tsv` | Final consolidated protein mutation table copied for dashboard and download access. |
-| `Surveillance_Outputs/README_outputs.txt` | Plain-text explanation of the final output folder. |
+| `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA with per-sample/per-segment identifiers. |
+| `Surveillance_Outputs/metadata.csv` | Validated sample metadata when `--metadata_csv` is provided. |
+| `Surveillance_Outputs/README_outputs.txt` | Plain-text explanation of the final delivery folder. |
 
-### 9.6. GISAID-ready outputs
+### GISAID-ready outputs
 
-GISAID outputs are generated only when `--gisaid_location` is provided.
+Generated only when `--gisaid_location` is provided.
 
-| Path | What it contains |
+| Path | Contents |
 |---|---|
-| `Surveillance_Outputs/GISAID_ready/gisaid_sequences.fasta` | FASTA file intended for GISAID preparation. It uses the same sequence headers and segment separation as `multisample_consensus.fasta`, preserving per-sample/per-segment identifiers. |
-| `Surveillance_Outputs/GISAID_ready/gisaid_metadata.csv` | CSV metadata template with isolate identifiers, isolate names, type/subtype, clade, location, host, originating lab, submitting lab, collection date, and submitter fields. |
+| `Surveillance_Outputs/GISAID_ready/gisaid_sequences.fasta` | FASTA file for GISAID preparation. It uses the same segment-aware headers as `multisample_consensus.fasta`. |
+| `Surveillance_Outputs/GISAID_ready/gisaid_metadata.csv` | GISAID-style metadata template with isolate names, type/subtype, clade, location, host, lab fields, collection date, and submitter fields. |
 
-### 9.7. Optional outputs
+### Phylogeny outputs
 
-| Path | When it appears |
+Generated only when `--run_phylogeny true`.
+
+| Path | Contents |
 |---|---|
-| `legacy_bridge/` | Only when `--run_legacy_bridge true`. |
-| `variant_calls_canonical_long/` | Long-read runs with `--run_medaka true`. |
-| `qc_reports/filtlong/` | Long-read runs. |
-| `qc_reports/fastp/` | Short-read runs. |
-| `depleted_reads/bowtie2/` | Short-read runs with `--host_depletion true`. |
-| `depleted_reads/minimap2/` | Long-read runs with `--host_depletion true`. |
-| `Surveillance_Outputs/GISAID_ready/` | Runs with `--gisaid_location` set. |
-| `Surveillance_Outputs/metadata.csv` | Runs with `--metadata_csv` set and valid metadata supplied. |
-| `Surveillance_Outputs/phylogeny/` | Runs with `--run_phylogeny true` and valid metadata; contains one group per eligible HA/NA tree. |
+| `Surveillance_Outputs/phylogeny/phylogeny_summary.tsv` | Status table for each eligible HA/NA tree group. |
+| `Surveillance_Outputs/phylogeny/<group>/sequences.fasta` | FASTA used to build that tree. |
+| `Surveillance_Outputs/phylogeny/<group>/metadata.tsv` | Metadata used by Augur for that tree. |
+| `Surveillance_Outputs/phylogeny/<group>/colors.tsv` | Explicit Auspice color scale. User sequences are dark red; context sequences are colored by metadata `state`. |
+| `Surveillance_Outputs/phylogeny/<group>/<group>.json` | Auspice-compatible JSON dataset. |
+| `Surveillance_Outputs/phylogeny/<group>/tree.nwk` | Refined Newick tree. |
 
-## 10. Databases and cache behavior
+### Variant, resistance, and mutation outputs
 
-The workflow automatically creates and updates `mk_flupipe_db/` as needed. This includes:
-- human genome and host depletion index;
+| Path | Contents |
+|---|---|
+| `assembly_final/antiviral_resistance/antiviral_resistance.tsv` | Antiviral resistance calls. |
+| `assembly_final/h5_virulence/h5_virulence_markers.tsv` | H5 virulence marker results. |
+| `assembly_final/coinfection/coinfection_report.tsv` | Coinfection/subtype mixing summary. |
+| `full_variant_calls/*.fullvarcall` | Per-sample protein mutation reports. |
+| `full_variant_calls/all_samples_protein_mutations.tsv` | Consolidated protein mutation table. |
+
+## Databases And Cache
+
+The workflow creates and updates `mk_flupipe_db/` automatically. This cache can contain:
+
+- human reference and host-depletion indexes;
 - Influenza BLAST database;
 - Nextclade datasets;
 - canonical references;
-- RefSeq segment references and GFF3 files for full protein mutation calling;
+- RefSeq segment references and GFF3 files;
 - antiviral resistance marker databases.
 
-If `mk_flupipe_db/` is deleted, it will be rebuilt on the next run.
+If `mk_flupipe_db/` is deleted, required resources are rebuilt or downloaded on the next run.
 
-## 11. Frequently asked questions
+## Automated Tests
 
-### Do I need to provide every parameter?
+The repository includes lightweight checks for schema validation, sample discovery, metadata validation, phylogeny grouping, and selected Nextflow parameter validation.
 
-No. Parameters are optional unless they are required for your specific run. If a parameter is omitted, the value defined in `nextflow.config` is used.
-
-### Does the pipeline require Conda?
-
-No. The recommended execution strategy is based on Docker or Singularity / Apptainer containers.
-
-### Does IRMA need to be installed on the host system?
-
-No. IRMA runs through:
-
-```text
-cdcgov/irma:v1.3.2
-```
-
-### Can I run this on WSL?
-
-Yes. The `linux` profile has been validated on WSL.
-
-### Can I run this on native Ubuntu?
-
-Yes. The same `linux` profile is intended for native Ubuntu.
-
-### Why can the `work/` directory become large?
-
-Nextflow stores staged inputs, intermediate files, task logs, and cached task results in `work/`. This is normal and allows `-resume` to reuse completed tasks. The folder can become large during FASTQ preprocessing, host depletion, and assembly.
-
-### What happens if one IRMA sample fails?
-
-The pipeline records the failed sample in the IRMA status output and continues downstream with samples that produced usable consensus FASTA files.
-
-### What happens to degenerate bases?
-
-Final sequences in `assembly_final/`, `Surveillance_Outputs/multisample_consensus.fasta`, and GISAID-ready FASTA exports are normalized so that degenerate bases are converted to `N`.
-
-## 12. Automated checks
-
-The repository includes a lightweight GitHub Actions workflow in `.github/workflows/tests.yml`.
-
-These checks do not run IRMA, BLAST, Nextclade, Medaka, or other containerized analysis steps. They are designed as fast guardrails for:
-
-- validating `nextflow_schema.json`;
-- checking Python syntax for sample discovery;
-- checking Python syntax and behavior for optional sample metadata validation;
-- confirming short-read discovery maps `--seq_type short` to `short_paired`;
-- confirming standard Illumina `_S<number>` tokens are not retained in reported sample identifiers;
-- confirming long-read discovery produces `seq_type=long`;
-- confirming invalid parameter combinations fail before heavy tasks are launched;
-- running `nf-test` pipeline and process tests for parameter validation, `DISCOVER_SAMPLES`, and `VALIDATE_METADATA`.
-
-Run the local smoke test from the repository root with:
+Run local Python smoke tests:
 
 ```bash
 python3 tests/check_discover_samples.py
 python3 tests/check_metadata.py
+python3 tests/check_phylogeny.py
 ```
 
-If `nf-test` is installed, run the local nf-test suite with:
+If `nf-test` is installed, run:
 
 ```bash
-nf-test test tests/nf-test --ci
+nf-test test tests/nf-test
 ```
 
-If the local Nextflow history file causes a duration-related runtime error, run nf-test with an isolated Nextflow home:
+These checks do not execute the full containerized analysis stack. They are fast guardrails for metadata, sample naming, parameter validation, and helper-script behavior.
 
-```bash
-NXF_HOME=/tmp/mkflupipe-nxfhome-test nf-test test tests/nf-test --ci
-```
+## FAQ
 
-The GitHub workflow installs Nextflow and nf-test, then verifies selected parameter-validation failures, including missing input directories and invalid long-read module/Medaka combinations.
+### Do I need to provide every parameter?
 
-## 13. Citation
+No. Parameters are optional unless required for a specific feature. For example, `--metadata_csv` is required only when metadata validation or phylogeny is requested.
 
-If you use MK Flu-Pipe Nextflow in your research, please cite:
+### Does the pipeline download GISAID data?
 
-> Nascimento, J. (2026). *MK Flu-Pipe Nextflow: A reproducible DSL2 workflow for Influenza short-read and long-read genomic surveillance* (v0.1.0). Zenodo. https://doi.org/10.5281/zenodo.20100567
+No. GISAID data must be downloaded by an authorized user and supplied locally as context FASTA and metadata.
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20100567.svg)](https://doi.org/10.5281/zenodo.20100567)
+### Can I run the same phylogeny module for short and long reads?
+
+Yes. The phylogeny module uses the final HA/NA consensus segment FASTA files, so it is independent of the original read type.
+
+### What happens if one IRMA sample fails?
+
+The workflow records the failed sample in the IRMA status output and continues downstream with samples that produced usable consensus FASTA files.
+
+### Why can `work/` become large?
+
+Nextflow stores staged inputs, intermediate files, logs, and cached task outputs in `work/`. This is normal and enables `-resume`.
+
+### What happens to degenerate bases?
+
+Final consensus FASTA files and GISAID-ready FASTA exports are normalized so degenerate bases are converted to `N`.
+
+## Citation
+
+If you use MK Flu-Pipe Nextflow, cite the repository and the archived release DOI:
+
+[https://doi.org/10.5281/zenodo.20100567](https://doi.org/10.5281/zenodo.20100567)
+
