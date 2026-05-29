@@ -13,5 +13,9 @@ process PRECHECK_FILTLONG {
         exit 1
     fi
     """
-}
 
+    stub:
+    """
+    true
+    """
+}

@@ -13,5 +13,9 @@ process PRECHECK_IRMA_LONG {
         exit 1
     fi
     """
-}
 
+    stub:
+    """
+    true
+    """
+}
