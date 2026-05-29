@@ -18,7 +18,7 @@ process RUN_PHYLOGENY {
     """
     mkdir -p phylogeny reports
 
-    # Preserve the dated tree while maximizing state/source color separation in Auspice.
+    # Preserve dated trees, separated state/source colors, and offline HTML tree views.
     python3 "${projectDir}/bin/run_phylogeny.py" \
         --blast-summary "${blast_summary}" \
         --metadata "${metadata_csv}" \

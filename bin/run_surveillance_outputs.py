@@ -37,6 +37,7 @@ SUMMARY_PHYLOGENY_FIELDS = [
     "status",
     "message",
     "auspice_json",
+    "tree_html",
 ]
 
 
@@ -237,6 +238,10 @@ def render_cell(header: str, value):
             pass
     if header_lower in {"qc_detail", "details"}:
         return '<div style="white-space:pre-line;text-align:left">{}</div>'.format(html.escape(display))
+    if header_lower == "tree_html" and display not in {"", "-"}:
+        return '<a class="btn btn-sm btn-outline-primary" href="phylogeny/{}" target="_blank">Open tree</a>'.format(html.escape(display))
+    if header_lower == "auspice_json" and display not in {"", "-"}:
+        return '<a class="btn btn-sm btn-outline-secondary" href="phylogeny/{}" target="_blank">JSON</a>'.format(html.escape(display))
     return html.escape(display)
 
 
@@ -755,10 +760,12 @@ def main():
     ]
     for row in phylogeny_rows:
         tree_json = row.get("auspice_json", "").strip()
+        tree_html = row.get("tree_html", "").strip()
         if tree_json:
             group = row.get("group", "tree")
             download_links.extend(
                 [
+                    (f"{group} tree HTML", f"phylogeny/{tree_html}" if tree_html else ""),
                     (f"{group} Auspice JSON", f"phylogeny/{tree_json}"),
                     (f"{group} Newick tree", f"phylogeny/{group}/tree.nwk"),
                 ]
@@ -934,7 +941,7 @@ def main():
          + render_html_table("tbl_metadata", metadata_rows, metadata_fields, "Validated metadata for phylogenetic analyses")
          + "</div></div>" if metadata_rows else ""),
         ("<div class='tab-pane fade' id='phylogeny'><div class='section'>HA and NA phylogeny</div><div class='panel'>"
-         + "<p class='text-muted'>Trees are generated separately for influenza A HA/NA subtypes and influenza B HA/NA. Auspice JSON files can be opened in an Auspice viewer; Newick files are also available under Downloads.</p>"
+         + "<p class='text-muted'>Trees are generated separately for influenza A HA/NA subtypes and influenza B HA/NA. Open Tree HTML for an offline view; Auspice JSON and Newick files remain available for external viewers.</p>"
          + render_html_table("tbl_phylogeny", phylogeny_rows, SUMMARY_PHYLOGENY_FIELDS, "Augur tree-generation summary")
          + "</div></div>" if phylogeny_rows else ""),
         "<div class='tab-pane fade' id='downloads'>",

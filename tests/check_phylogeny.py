@@ -104,6 +104,23 @@ def main() -> int:
         state_colors = [row[2] for row in color_rows if row[1] != "User Sequences"]
         assert len(state_colors) == len(set(state_colors)), colors
         assert all(color != "#8B0000" for color in state_colors), colors
+        html_group = work / "html_group"
+        html_group.mkdir()
+        write(html_group / "tree.nwk", "(A_SAMPLE:0.1,CTX_A_HA:0.2):0.0;\n")
+        colors_path.replace(html_group / "colors.tsv")
+        tree_html = module.write_tree_html(
+            html_group,
+            "A_H3_HA",
+            [
+                {"strain": "A_SAMPLE", "display_group": "User Sequences", "date": "2026-01-01"},
+                {"strain": "CTX_A_HA", "display_group": "Estado de Sao Paulo", "date": "2025-12-01"},
+            ],
+        )
+        assert tree_html == "A_H3_HA/A_H3_HA.html", tree_html
+        html_text = (html_group / "A_H3_HA.html").read_text(encoding="utf-8")
+        assert "MK Flu-Pipe A_H3_HA phylogeny" in html_text, html_text
+        assert "#8B0000" in html_text, html_text
+        assert "<svg" in html_text, html_text
     print("phylogeny grouping smoke tests passed")
     return 0
 

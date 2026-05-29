@@ -354,6 +354,8 @@ Coloring in Auspice:
 - missing context locality values are shown as `State not available`;
 - the time-scaled tree uses `collection_date`; coloring does not replace temporal dating.
 
+For each generated tree, MK Flu-Pipe also writes an offline `HTML` viewer next to the Augur outputs. This static viewer uses the same state/source colors and can be opened directly from the dashboard without requiring internet access. The Auspice JSON remains available for fully interactive visualization in a Nextstrain/Auspice viewer.
+
 GISAID sequences are not downloaded automatically. If GISAID context is used, authorized users must download the sequences and metadata themselves and analyze them locally according to GISAID terms. NCBI or other public context datasets can be supplied through the same FASTA/metadata interface.
 
 ## Parameters
@@ -521,6 +523,7 @@ Generated only when `--run_phylogeny true`.
 | `Surveillance_Outputs/phylogeny/<group>/sequences.fasta` | FASTA used to build that tree. |
 | `Surveillance_Outputs/phylogeny/<group>/metadata.tsv` | Metadata used by Augur for that tree. |
 | `Surveillance_Outputs/phylogeny/<group>/colors.tsv` | Explicit Auspice color scale. User sequences are dark red; context sequences are colored by metadata `state`. |
+| `Surveillance_Outputs/phylogeny/<group>/<group>.html` | Offline static tree viewer linked from the dashboard. |
 | `Surveillance_Outputs/phylogeny/<group>/<group>.json` | Auspice-compatible JSON dataset. |
 | `Surveillance_Outputs/phylogeny/<group>/tree.nwk` | Refined Newick tree. |
 
@@ -598,4 +601,3 @@ Final consensus FASTA files and GISAID-ready FASTA exports are normalized so deg
 If you use MK Flu-Pipe Nextflow, cite the repository and the archived release DOI:
 
 [https://doi.org/10.5281/zenodo.20100567](https://doi.org/10.5281/zenodo.20100567)
-

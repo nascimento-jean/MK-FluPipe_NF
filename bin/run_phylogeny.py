@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import colorsys
 import csv
+import html
 import json
 import re
 import shutil
@@ -26,10 +27,21 @@ SUMMARY_FIELDS = [
     "status",
     "message",
     "auspice_json",
+    "tree_html",
 ]
 
 
 USER_SEQUENCE_COLOR = "#8B0000"
+
+
+class TreeNode:
+    def __init__(self, name="", length=0.0):
+        self.name = name
+        self.length = length
+        self.children = []
+        self.parent = None
+        self.x = 0.0
+        self.y = 0.0
 
 
 def parse_args():
@@ -277,6 +289,233 @@ def write_display_group_colors(path: Path, records):
             handle.write(f"display_group\t{group}\t{color_map[group]}\n")
 
 
+def read_color_map(path: Path):
+    color_map = {}
+    if not path.exists():
+        return color_map
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) == 3 and parts[0] == "display_group":
+            color_map[parts[1]] = parts[2]
+    return color_map
+
+
+def parse_newick(path: Path):
+    text = path.read_text(encoding="utf-8", errors="ignore").strip()
+    index = 0
+
+    def skip_ws():
+        nonlocal index
+        while index < len(text) and text[index].isspace():
+            index += 1
+
+    def parse_label():
+        nonlocal index
+        skip_ws()
+        if index < len(text) and text[index] in {"'", '"'}:
+            quote = text[index]
+            index += 1
+            start = index
+            while index < len(text) and text[index] != quote:
+                index += 1
+            label = text[start:index]
+            if index < len(text):
+                index += 1
+            return label
+        start = index
+        while index < len(text) and text[index] not in ":,();":
+            index += 1
+        return text[start:index].strip()
+
+    def parse_length():
+        nonlocal index
+        skip_ws()
+        if index >= len(text) or text[index] != ":":
+            return 0.0
+        index += 1
+        start = index
+        while index < len(text) and text[index] not in ",();":
+            index += 1
+        try:
+            return max(0.0, float(text[start:index].strip()))
+        except ValueError:
+            return 0.0
+
+    def parse_node():
+        nonlocal index
+        skip_ws()
+        node = TreeNode()
+        if index < len(text) and text[index] == "(":
+            index += 1
+            while True:
+                child = parse_node()
+                child.parent = node
+                node.children.append(child)
+                skip_ws()
+                if index < len(text) and text[index] == ",":
+                    index += 1
+                    continue
+                if index < len(text) and text[index] == ")":
+                    index += 1
+                break
+            node.name = parse_label()
+            node.length = parse_length()
+        else:
+            node.name = parse_label()
+            node.length = parse_length()
+        return node
+
+    return parse_node()
+
+
+def iter_nodes(node):
+    yield node
+    for child in node.children:
+        yield from iter_nodes(child)
+
+
+def tree_leaves(node):
+    if not node.children:
+        return [node]
+    leaves = []
+    for child in node.children:
+        leaves.extend(tree_leaves(child))
+    return leaves
+
+
+def assign_tree_layout(root):
+    leaves = tree_leaves(root)
+    for order, leaf in enumerate(leaves):
+        leaf.y = order
+
+    def assign_x(node, parent_x=0.0):
+        node.x = parent_x + node.length
+        for child in node.children:
+            assign_x(child, node.x)
+
+    def assign_y(node):
+        if node.children:
+            for child in node.children:
+                assign_y(child)
+            node.y = sum(child.y for child in node.children) / len(node.children)
+
+    assign_x(root, 0.0)
+    assign_y(root)
+    return leaves
+
+
+def build_svg_tree(root, metadata_by_strain, color_map):
+    leaves = assign_tree_layout(root)
+    max_x = max((node.x for node in iter_nodes(root)), default=1.0) or 1.0
+    width = 1180
+    left = 28
+    right = 260
+    top = 36
+    row_height = 26
+    plot_width = width - left - right
+    height = max(220, top * 2 + row_height * max(1, len(leaves) - 1))
+
+    def sx(value):
+        return left + (value / max_x * plot_width)
+
+    def sy(value):
+        return top + value * row_height
+
+    elements = [
+        f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {width} {height}' role='img'>",
+        "<style>.branch{stroke:#a8b0b0;stroke-width:3;fill:none;stroke-linecap:round}.tip-label{font:13px Arial,sans-serif;fill:#111827}.axis{stroke:#e5e7eb;stroke-width:1}</style>",
+    ]
+
+    for frac in [i / 5 for i in range(6)]:
+        x = left + frac * plot_width
+        elements.append(f"<line class='axis' x1='{x:.2f}' x2='{x:.2f}' y1='{top / 2:.2f}' y2='{height - top / 2:.2f}'/>")
+
+    def draw(node):
+        if not node.children:
+            return
+        child_ys = [sy(child.y) for child in node.children]
+        x = sx(node.x)
+        elements.append(f"<line class='branch' x1='{x:.2f}' x2='{x:.2f}' y1='{min(child_ys):.2f}' y2='{max(child_ys):.2f}'/>")
+        for child in node.children:
+            cx = sx(child.x)
+            cy = sy(child.y)
+            elements.append(f"<line class='branch' x1='{x:.2f}' x2='{cx:.2f}' y1='{cy:.2f}' y2='{cy:.2f}'/>")
+            draw(child)
+
+    draw(root)
+
+    for leaf in leaves:
+        meta = metadata_by_strain.get(leaf.name, {})
+        group = meta.get("display_group", "State not available")
+        color = color_map.get(group, "#9CA3AF")
+        x = sx(leaf.x)
+        y = sy(leaf.y)
+        label = html.escape(leaf.name)
+        title = html.escape(f"{leaf.name} | {group} | {meta.get('date', '')}")
+        elements.append(f"<circle cx='{x:.2f}' cy='{y:.2f}' r='5.5' fill='{color}' stroke='#374151' stroke-width='.55'><title>{title}</title></circle>")
+        elements.append(f"<text class='tip-label' x='{x + 10:.2f}' y='{y + 4:.2f}'>{label}</text>")
+
+    elements.append("</svg>")
+    return "\n".join(elements)
+
+
+def write_tree_html(group_dir: Path, group_name: str, records):
+    tree_path = group_dir / "tree.nwk"
+    if not tree_path.exists() or tree_path.stat().st_size == 0:
+        return ""
+    metadata_by_strain = {record["strain"]: record for record in records}
+    color_map = read_color_map(group_dir / "colors.tsv")
+    root = parse_newick(tree_path)
+    svg = build_svg_tree(root, metadata_by_strain, color_map)
+    legend_items = []
+    for group, color in sorted(color_map.items(), key=lambda item: (item[0] != "User Sequences", item[0])):
+        legend_items.append(
+            "<span class='legend-item'><span class='swatch' style='background:{}'></span>{}</span>".format(
+                html.escape(color),
+                html.escape(group),
+            )
+        )
+    html_path = group_dir / f"{group_name}.html"
+    html_path.write_text(
+        """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MK Flu-Pipe {group} phylogeny</title>
+  <style>
+    body{{font-family:Arial,sans-serif;margin:0;background:#f8fafc;color:#111827}}
+    header{{padding:1rem 1.25rem;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff}}
+    main{{padding:1rem 1.25rem}}
+    .panel{{background:#fff;border-radius:14px;box-shadow:0 10px 25px rgba(15,23,42,.10);padding:1rem;overflow:auto}}
+    .legend{{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:.75rem 0 1rem}}
+    .legend-item{{display:inline-flex;align-items:center;gap:.35rem;font-size:.9rem}}
+    .swatch{{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(17,24,39,.3)}}
+    .links a{{display:inline-block;margin-right:.75rem;color:#1d4ed8;font-weight:700}}
+    svg{{min-width:900px;width:100%;height:auto}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MK Flu-Pipe {group} phylogeny</h1>
+    <p>Static offline tree generated from the Augur Newick output. Use the Auspice JSON for the fully interactive Nextstrain view.</p>
+  </header>
+  <main>
+    <div class="links">
+      <a href="{group}.json" target="_blank">Open Auspice JSON</a>
+      <a href="tree.nwk" target="_blank">Open Newick tree</a>
+    </div>
+    <div class="legend">{legend}</div>
+    <div class="panel">{svg}</div>
+  </main>
+</body>
+</html>
+""".format(group=html.escape(group_name), legend="".join(legend_items), svg=svg),
+        encoding="utf-8",
+    )
+    return f"{group_name}/{group_name}.html"
+
+
 def run_command(command, log_handle):
     log_handle.write("$ " + " ".join(command) + "\n")
     result = subprocess.run(command, capture_output=True, text=True)
@@ -305,7 +544,7 @@ def build_tree(group_dir: Path, group_name: str, records, threads: int, log_hand
     ]
     for command in commands:
         if not run_command(command, log_handle):
-            return "FAILED", "Augur alignment or tree inference failed", ""
+            return "FAILED", "Augur alignment or tree inference failed", "", ""
 
     time_command = [
         "augur", "refine", "--tree", str(raw_tree), "--alignment", str(aligned),
@@ -321,7 +560,7 @@ def build_tree(group_dir: Path, group_name: str, records, threads: int, log_hand
             "--output-tree", str(refined_tree), "--output-node-data", str(node_data),
         ]
         if not run_command(fallback_command, log_handle):
-            return "FAILED", "Augur refinement failed", ""
+            return "FAILED", "Augur refinement failed", "", ""
         status = "WARN"
         message = "Tree generated without time scaling; inspect temporal signal"
 
@@ -352,8 +591,9 @@ def build_tree(group_dir: Path, group_name: str, records, threads: int, log_hand
         "--output", str(auspice_json),
     ]
     if not run_command(export_command, log_handle):
-        return "FAILED", "Auspice JSON export failed", ""
-    return status, message, f"{group_name}/{group_name}.json"
+        return "FAILED", "Auspice JSON export failed", "", ""
+    tree_html = write_tree_html(group_dir, group_name, records)
+    return status, message, f"{group_name}/{group_name}.json", tree_html
 
 
 def main():
@@ -416,9 +656,10 @@ def main():
                 status = "SKIPPED"
                 message = f"At least {args.min_sequences} sequences are required"
                 auspice_json = ""
+                tree_html = ""
             else:
                 log_handle.write(f"\n[{group_name}] {len(records)} sequences\n")
-                status, message, auspice_json = build_tree(group_dir, group_name, records, args.threads, log_handle)
+                status, message, auspice_json, tree_html = build_tree(group_dir, group_name, records, args.threads, log_handle)
             summaries.append(
                 {
                     "group": group_name,
@@ -431,6 +672,7 @@ def main():
                     "status": status,
                     "message": message,
                     "auspice_json": auspice_json,
+                    "tree_html": tree_html,
                 }
             )
 
