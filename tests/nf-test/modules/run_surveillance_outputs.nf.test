@@ -1,0 +1,66 @@
+nextflow_process {
+
+    name "RUN_SURVEILLANCE_OUTPUTS"
+    script "modules/local/run_surveillance_outputs.nf"
+    process "RUN_SURVEILLANCE_OUTPUTS"
+
+    test("builds dashboard outputs from merged surveillance dependencies") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/surveillance-outputs"
+            }
+            process {
+                """
+                input[0] = [
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/SAMPLE_A.fastp.json"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/SAMPLE_A.host_depletion.stats.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/all_samples_protein_mutations.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/antiviral_resistance.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/assembly_qc_report.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/blast_typing_summary.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/coinfection_report.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/depth_summary.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/h5_virulence_markers.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/multiqc_report.html"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/nextclade_summary.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/phylogeny"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/validated_metadata.csv")
+                ]
+                input[1] = [file("${projectDir}/tests/data/surveillance_outputs/consensus/SAMPLE_A.fasta")]
+                input[2] = [file("${projectDir}/tests/data/surveillance_outputs/irma_runs/SAMPLE_A")]
+                input[3] = "FLU-utr"
+                input[4] = "0.1.0"
+                input[5] = "Brazil-AL"
+                input[6] = "2026"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def outputs = path(process.out[0][0])
+            assert outputs.resolve("surveillance_report.html").exists()
+            assert outputs.resolve("typing_results.tsv").exists()
+            assert outputs.resolve("GISAID_ready/gisaid_sequences.fasta").exists()
+            assert outputs.resolve("phylogeny/A_H3_HA/A_H3_HA.html").exists()
+
+            def reportHtml = outputs.resolve("surveillance_report.html").text
+            assert reportHtml.contains("Open tree")
+            assert reportHtml.contains("Sample metadata")
+            assert reportHtml.contains("phylogeny/A_H3_HA/A_H3_HA.html")
+
+            def typing = outputs.resolve("typing_results.tsv").text
+            assert typing.contains("Accession: LK054740 | Influenza")
+            assert typing.contains("Segments: 8/8")
+            assert typing.contains("Low Coverage: A_NP(5x), A_PB1(7x)")
+
+            assert outputs.resolve("GISAID_ready/gisaid_sequences.fasta").text == outputs.resolve("multisample_consensus.fasta").text
+
+            def summary = new groovy.json.JsonSlurper().parse(outputs.resolve("run_summary.json"))
+            assert summary.total_samples == 1
+
+            assert path(process.out[1][0]).text.contains("Phylogeny groups: 1")
+        }
+    }
+}

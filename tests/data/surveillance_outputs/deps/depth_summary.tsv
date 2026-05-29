@@ -1,0 +1,2 @@
+sample	segment	cov_mean	cov_min	cov_max	positions_covered	ref_length
+SAMPLE_A	A_HA	100	10	250	1700	1701

@@ -1,0 +1,2 @@
+sample_id	layout	seq_type	input_reads	output_reads	read_retention_pct	input_mean_len	output_mean_len
+SAMPLE_A	paired	short_paired	80	75	93.75	125	124

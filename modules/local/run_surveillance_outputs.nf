@@ -21,6 +21,6 @@ process RUN_SURVEILLANCE_OUTPUTS {
     mkdir -p Surveillance_Outputs reports
 
     # Include offline phylogeny tree HTML links in the final dashboard.
-    python "${projectDir}/bin/run_surveillance_outputs.py"         --output-dir Surveillance_Outputs         --log-file reports/surveillance_outputs.log         --irma-module "${irma_module}"         --pipeline-version "${pipeline_version}"         --gisaid-location "${gisaid_location}"         --gisaid-year "${gisaid_year}"         --dependencies deps*/*         --consensus-fastas cons*/*         --irma-dirs irma*/*
+    python3 "${projectDir}/bin/run_surveillance_outputs.py"         --output-dir Surveillance_Outputs         --log-file reports/surveillance_outputs.log         --irma-module "${irma_module}"         --pipeline-version "${pipeline_version}"         --gisaid-location "${gisaid_location}"         --gisaid-year "${gisaid_year}"         --dependencies deps*/*         --consensus-fastas cons*/*         --irma-dirs irma*/*
     """
 }

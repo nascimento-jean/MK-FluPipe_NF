@@ -1,0 +1,1 @@
+{"summary":{"before_filtering":{"total_reads":100,"total_bases":10000},"after_filtering":{"total_reads":80,"q30_rate":0.95,"read1_mean_length":125}},"filtering_result":{"passed_filter_reads":80}}

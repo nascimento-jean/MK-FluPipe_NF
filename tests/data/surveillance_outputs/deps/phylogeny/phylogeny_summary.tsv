@@ -1,0 +1,2 @@
+group	type	segment	subtype	pipeline_sequences	context_sequences	total_sequences	status	message	auspice_json	tree_html
+A_H3_HA	A	HA	H3	1	2	3	PASS	Time-scaled Augur tree generated	A_H3_HA/A_H3_HA.json	A_H3_HA/A_H3_HA.html
