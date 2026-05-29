@@ -552,7 +552,7 @@ If `mk_flupipe_db/` is deleted, required resources are rebuilt or downloaded on 
 
 ## Automated Tests
 
-The repository includes lightweight checks for schema validation, sample discovery, metadata validation, phylogeny grouping, and selected Nextflow parameter validation.
+The repository includes lightweight checks for schema validation, sample discovery, metadata validation, phylogeny grouping, surveillance output rendering, and selected Nextflow parameter validation.
 
 Run local Python smoke tests:
 
@@ -560,6 +560,7 @@ Run local Python smoke tests:
 python3 tests/check_discover_samples.py
 python3 tests/check_metadata.py
 python3 tests/check_phylogeny.py
+python3 tests/check_surveillance_outputs.py
 ```
 
 If `nf-test` is installed, run:
