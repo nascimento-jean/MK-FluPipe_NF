@@ -79,4 +79,11 @@ process RUN_MEDAKA_VARIANTS {
         printf 'No BAM files found for %s in %s\n' "${meta.id}" "${irma_dir}" >> "reports/${meta.id}.medaka.log"
     fi
     """
+
+    stub:
+    """
+    mkdir -p "variant_calls/${meta.id}/A_HA_medaka" reports
+    printf '##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' > "variant_calls/${meta.id}/A_HA_medaka/medaka.annotated.vcf"
+    echo 'stub Medaka variant calls for ${meta.id}' > "reports/${meta.id}.medaka.log"
+    """
 }

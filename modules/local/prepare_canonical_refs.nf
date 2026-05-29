@@ -21,4 +21,13 @@ process PREPARE_CANONICAL_REFS {
         ln -sf "\$ref" "canonical_refs/\$(basename "\$ref")"
     done
     """
+
+    stub:
+    """
+    mkdir -p canonical_refs
+    for ref in N1_NA N2_NA N1_PA N2_PA N1_MP N2_MP; do
+        printf '>%s\\nACGTACGTACGT\\n' "\$ref" > "canonical_refs/\${ref}.fa"
+    done
+    echo 'stub canonical refs' > canonical_refs.log
+    """
 }

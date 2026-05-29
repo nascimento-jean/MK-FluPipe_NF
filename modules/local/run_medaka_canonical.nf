@@ -65,4 +65,11 @@ process RUN_MEDAKA_CANONICAL {
         [[ -f "\$medaka_out/medaka.annotated.vcf" ]] && called=\$((called + 1))
     done
     """
+
+    stub:
+    """
+    mkdir -p "variant_calls_canonical_long/${meta.id}/${meta.id}_NA_canonical_medaka" reports
+    printf '##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' > "variant_calls_canonical_long/${meta.id}/${meta.id}_NA_canonical_medaka/medaka.annotated.vcf"
+    echo 'stub canonical Medaka calls for ${meta.id}' > "reports/${meta.id}.medaka_canonical.log"
+    """
 }

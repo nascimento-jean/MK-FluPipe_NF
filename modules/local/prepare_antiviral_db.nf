@@ -15,4 +15,11 @@ process PREPARE_ANTIVIRAL_DB {
         --output-dir antiviral_resistance \
         --log-file antiviral_resistance/prepare_antiviral_db.log
     """
+
+    stub:
+    """
+    mkdir -p antiviral_resistance
+    printf 'gene\\taa_position\\twt_who\\tmut_who\\tdrug\\tsignificance\\tnomenclature\\n' > antiviral_resistance/flu_antiviral_markers.tsv
+    echo 'stub antiviral db' > antiviral_resistance/prepare_antiviral_db.log
+    """
 }
