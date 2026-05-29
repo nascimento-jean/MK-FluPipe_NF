@@ -1,0 +1,44 @@
+nextflow_process {
+
+    name "RUN_PHYLOGENY"
+    script "modules/local/run_phylogeny.nf"
+    process "RUN_PHYLOGENY"
+
+    test("creates skipped HA and NA phylogeny summaries without running Augur") {
+        when {
+            params {
+                output_dir = "tests/output/nf-test/phylogeny-skipped"
+            }
+            process {
+                """
+                input[0] = file("${projectDir}/tests/data/phylogeny/blast_typing_summary.tsv")
+                input[1] = [
+                    file("${projectDir}/tests/data/phylogeny/PHYLO_A_segment_4.fasta"),
+                    file("${projectDir}/tests/data/phylogeny/PHYLO_A_segment_6.fasta"),
+                    file("${projectDir}/tests/data/phylogeny/PHYLO_B_segment_4.fasta"),
+                    file("${projectDir}/tests/data/phylogeny/PHYLO_B_segment_6.fasta")
+                ]
+                input[2] = file("${projectDir}/tests/data/phylogeny/metadata.csv")
+                input[3] = file("${projectDir}/assets/phylogeny/empty_context.fasta")
+                input[4] = file("${projectDir}/assets/phylogeny/empty_context_metadata.csv")
+                input[5] = 99
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def phylogenyDir = path(process.out[0][0])
+            def summary = phylogenyDir.resolve("phylogeny_summary.tsv")
+            assert summary.exists()
+            def lines = summary.readLines()
+            assert lines.any { it.startsWith("A_H3_HA\tA\tHA\tH3\t1\t0\t1\tSKIPPED\t") }
+            assert lines.any { it.startsWith("A_N2_NA\tA\tNA\tN2\t1\t0\t1\tSKIPPED\t") }
+            assert lines.any { it.startsWith("B_HA\tB\tHA\t-\t1\t0\t1\tSKIPPED\t") }
+            assert lines.any { it.startsWith("B_NA\tB\tNA\t-\t1\t0\t1\tSKIPPED\t") }
+            assert phylogenyDir.resolve("A_H3_HA/metadata.tsv").readLines().any { it.contains("User Sequences") }
+            assert !phylogenyDir.resolve("A_H3_HA/A_H3_HA.html").exists()
+            assert path(process.out[1][0]).text.contains("MK Flu-Pipe phylogeny started")
+        }
+    }
+}
