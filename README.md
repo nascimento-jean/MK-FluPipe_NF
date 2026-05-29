@@ -560,6 +560,7 @@ Run local Python smoke tests:
 python3 tests/check_discover_samples.py
 python3 tests/check_metadata.py
 python3 tests/check_phylogeny.py
+python3 tests/check_light_integration.py
 python3 tests/check_surveillance_outputs.py
 ```
 
