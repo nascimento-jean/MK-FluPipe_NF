@@ -21,4 +21,10 @@ process RUN_FASTQC {
         --outdir "${meta.id}_fastqc" \
         ${readsArg}
     """
+
+    stub:
+    """
+    mkdir -p "${meta.id}_fastqc"
+    echo "stub FastQC report for ${meta.id}" > "${meta.id}_fastqc/${meta.id}_fastqc.html"
+    """
 }

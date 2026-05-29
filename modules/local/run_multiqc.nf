@@ -22,4 +22,12 @@ process RUN_MULTIQC {
         input* \
         > reports/multiqc.log 2>&1
     """
+
+    stub:
+    """
+    mkdir -p MultiQC/multiqc_data reports
+    echo '<html><body>stub MultiQC report</body></html>' > MultiQC/multiqc_report.html
+    echo 'stub multiqc data' > MultiQC/multiqc_data/stub.txt
+    echo 'stub MultiQC log' > reports/multiqc.log
+    """
 }

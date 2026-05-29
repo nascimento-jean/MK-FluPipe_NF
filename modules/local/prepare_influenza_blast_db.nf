@@ -75,4 +75,12 @@ process PREPARE_INFLUENZA_BLAST_DB {
         ln -sf "\$idx" "blast_db/\$(basename "\$idx")"
     done
     """
+
+    stub:
+    """
+    mkdir -p blast_db
+    echo '>stub_influenza_reference' > blast_db/influenza.fna
+    echo 'ACGTACGTACGT' >> blast_db/influenza.fna
+    touch blast_db/influenza_blast_db.nhr blast_db/influenza_blast_db.nin blast_db/influenza_blast_db.nsq
+    """
 }

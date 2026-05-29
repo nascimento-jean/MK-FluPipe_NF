@@ -20,4 +20,10 @@ process RUN_ASSEMBLY_QC {
         --min-segments "${params.min_segments}" \
         --output-tsv "${meta.id}.assembly_qc.tsv"
     """
+
+    stub:
+    """
+    printf 'sample\\tqc_assembly\\tqc_detail\\n' > "${meta.id}.assembly_qc.tsv"
+    printf '%s\\tPASS\\tsegs:8/8\\n' "${meta.id}" >> "${meta.id}.assembly_qc.tsv"
+    """
 }

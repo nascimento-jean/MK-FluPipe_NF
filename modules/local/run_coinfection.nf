@@ -21,4 +21,16 @@ process RUN_COINFECTION {
         --coinfection-pct ${params.coinfection_pct} \
         input*/*
     """
+
+    stub:
+    """
+    mkdir -p coinfection reports
+    printf 'sample\\tcoinfection_status\\tdetails\\n' > coinfection/coinfection_report.tsv
+    for dir in input*/*; do
+        [ -d "\$dir" ] || continue
+        sample=\$(basename "\$dir")
+        printf '%s\\tOK\\tsegs_analyzed:8|segs_flagged:0|no_alert\\n' "\$sample" >> coinfection/coinfection_report.tsv
+    done
+    echo 'stub coinfection log' > reports/coinfection.log
+    """
 }

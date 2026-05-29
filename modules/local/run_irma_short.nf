@@ -153,4 +153,72 @@ process RUN_IRMA_SHORT {
         } > "pipeline_status/${meta.id}.irma.tsv"
         """
     }
+
+    stub:
+    if( meta.layout == 'paired' ) {
+        """
+        mkdir -p "irma_runs_short/${meta.id}/amended_consensus" assembly_final reports pipeline_status
+        cat > "irma_runs_short/${meta.id}/amended_consensus/${meta.id}.fa" <<'FASTA'
+>${meta.id}_1
+ACGTACGTACGT
+>${meta.id}_2
+ACGTACGTACGA
+>${meta.id}_3
+ACGTACGTACGC
+>${meta.id}_4
+ACGTACGTACGG
+>${meta.id}_5
+ACGTACGTACCT
+>${meta.id}_6
+ACGTACGTACCA
+>${meta.id}_7
+ACGTACGTACCC
+>${meta.id}_8
+ACGTACGTACCG
+FASTA
+        cp "irma_runs_short/${meta.id}/amended_consensus/${meta.id}.fa" "assembly_final/${meta.id}.fasta"
+        echo "stub IRMA log for ${meta.id}" > "reports/${meta.id}.irma.log"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tread1\\tread2\\tirma_module\\tirma_dir\\tconsensus_fasta\\tlog_file\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "${reads[0]}" "${reads[1]}" "${params.irma_module}" "irma_runs_short/${meta.id}" "assembly_final/${meta.id}.fasta" "reports/${meta.id}.irma.log"
+        } > "${meta.id}_irma_manifest.tsv"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tstatus\\treason\\tread1\\tread2\\tirma_module\\tirma_dir\\tconsensus_fasta\\tlog_file\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "success" "-" "${reads[0]}" "${reads[1]}" "${params.irma_module}" "irma_runs_short/${meta.id}" "assembly_final/${meta.id}.fasta" "reports/${meta.id}.irma.log"
+        } > "pipeline_status/${meta.id}.irma.tsv"
+        """
+    }
+    else {
+        """
+        mkdir -p "irma_runs_short/${meta.id}/amended_consensus" assembly_final reports pipeline_status
+        cat > "irma_runs_short/${meta.id}/amended_consensus/${meta.id}.fa" <<'FASTA'
+>${meta.id}_1
+ACGTACGTACGT
+>${meta.id}_2
+ACGTACGTACGA
+>${meta.id}_3
+ACGTACGTACGC
+>${meta.id}_4
+ACGTACGTACGG
+>${meta.id}_5
+ACGTACGTACCT
+>${meta.id}_6
+ACGTACGTACCA
+>${meta.id}_7
+ACGTACGTACCC
+>${meta.id}_8
+ACGTACGTACCG
+FASTA
+        cp "irma_runs_short/${meta.id}/amended_consensus/${meta.id}.fa" "assembly_final/${meta.id}.fasta"
+        echo "stub IRMA log for ${meta.id}" > "reports/${meta.id}.irma.log"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tread1\\tread2\\tirma_module\\tirma_dir\\tconsensus_fasta\\tlog_file\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "${reads[0]}" "-" "${params.irma_module}" "irma_runs_short/${meta.id}" "assembly_final/${meta.id}.fasta" "reports/${meta.id}.irma.log"
+        } > "${meta.id}_irma_manifest.tsv"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tstatus\\treason\\tread1\\tread2\\tirma_module\\tirma_dir\\tconsensus_fasta\\tlog_file\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "success" "-" "${reads[0]}" "-" "${params.irma_module}" "irma_runs_short/${meta.id}" "assembly_final/${meta.id}.fasta" "reports/${meta.id}.irma.log"
+        } > "pipeline_status/${meta.id}.irma.tsv"
+        """
+    }
 }

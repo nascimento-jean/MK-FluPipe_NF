@@ -13,5 +13,9 @@ process PRECHECK_FASTP {
         exit 1
     fi
     """
-}
 
+    stub:
+    """
+    true
+    """
+}

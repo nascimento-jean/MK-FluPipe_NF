@@ -13,4 +13,9 @@ process PRECHECK_FASTQC {
         exit 1
     fi
     """
+
+    stub:
+    """
+    true
+    """
 }

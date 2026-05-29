@@ -59,4 +59,12 @@ process RUN_SAMTOOLS_DEPTH {
         done
     } > "${meta.id}.depth_stats.tsv"
     """
+
+    stub:
+    """
+    mkdir -p "depth_per_position/${meta.id}"
+    printf 'sample\\tsegment\\tcov_mean\\tcov_min\\tcov_max\\tpositions_covered\\tref_length\\n' > "${meta.id}.depth_stats.tsv"
+    printf '%s\\tA_HA\\t100.0\\t50\\t150\\t12\\t12\\n' "${meta.id}" >> "${meta.id}.depth_stats.tsv"
+    printf 'A_HA\\t1\\t100\\n' > "depth_per_position/${meta.id}/A_HA.depth.tsv"
+    """
 }

@@ -8,4 +8,9 @@ process PRECHECK_NEXTCLADE {
     """
     nextclade --version >/dev/null
     """
+
+    stub:
+    """
+    true
+    """
 }

@@ -8,4 +8,9 @@ process PRECHECK_SAMTOOLS_DEPTH {
     """
     samtools --version >/dev/null
     """
+
+    stub:
+    """
+    true
+    """
 }

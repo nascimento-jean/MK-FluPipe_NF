@@ -14,7 +14,7 @@ process RUN_MERGE_IRMA_STATUS {
     """
     mkdir -p pipeline_status
 
-    python - <<'PY'
+    python3 - <<'PY'
 import csv
 from pathlib import Path
 

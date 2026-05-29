@@ -9,4 +9,9 @@ process PRECHECK_BLAST_TYPING {
     blastn -version >/dev/null
     makeblastdb -version >/dev/null
     """
+
+    stub:
+    """
+    true
+    """
 }

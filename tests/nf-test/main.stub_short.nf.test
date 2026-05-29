@@ -1,0 +1,43 @@
+nextflow_pipeline {
+
+    name "MK Flu-Pipe short-read stub workflow"
+    script "main.nf"
+
+    test("runs the minimal short-read workflow graph with process stubs") {
+        options "-stub-run"
+
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/short_paired"
+                output_dir = "${projectDir}/tests/output/nf-test/stub-short-workflow"
+                irma_module = "FLU-utr"
+                seq_type = "short"
+                host_depletion = "false"
+                run_antiviral = "false"
+                run_h5_virulence = "false"
+                run_fullvarcall = "false"
+                run_ivar = "false"
+                max_cpus = 2
+                queue_size = 1
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def outputDir = path("${projectDir}/tests/output/nf-test/stub-short-workflow")
+            def surveillance = outputDir.resolve("Surveillance_Outputs")
+            assert surveillance.resolve("surveillance_report.html").exists()
+            assert surveillance.resolve("typing_results.tsv").exists()
+            assert surveillance.resolve("run_summary.json").exists()
+            assert surveillance.resolve("multisample_consensus.fasta").exists()
+            assert outputDir.resolve("assembly_final/assembly_qc_report.tsv").exists()
+            assert outputDir.resolve("assembly_final/depth_summary.tsv").exists()
+
+            def summary = new groovy.json.JsonSlurper().parse(surveillance.resolve("run_summary.json"))
+            assert summary.total_samples == 1
+            assert surveillance.resolve("typing_results.tsv").text.contains("SAMPLE_A")
+            assert surveillance.resolve("surveillance_report.html").text.contains("MK Flu-Pipe Nextflow Dashboard")
+        }
+    }
+}

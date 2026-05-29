@@ -12,4 +12,9 @@ process PRECHECK_MULTIQC {
         exit 1
     fi
     """
+
+    stub:
+    """
+    true
+    """
 }

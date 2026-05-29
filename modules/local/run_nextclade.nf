@@ -21,4 +21,12 @@ process RUN_NEXTCLADE {
 
     python "${projectDir}/bin/run_nextclade_batch.py"         --blast-summary "${blast_summary}"         --datasets-root "${nextcladeDatasetsDir}"         --max-days ${nextcladeMaxDays}         --output-dir nextclade_results         --log-file nextclade_results/nextclade.log         input*/*
     """
+
+    stub:
+    """
+    mkdir -p nextclade_results
+    printf 'sample\\tclade_display\\tqc_status\\n' > nextclade_results/nextclade_summary.tsv
+    awk -F '\\t' 'NR>1 { print \$1 "\\t3C.2a1b.2a.2\\tgood" }' "${blast_summary}" >> nextclade_results/nextclade_summary.tsv
+    echo 'stub Nextclade log' > nextclade_results/nextclade.log
+    """
 }

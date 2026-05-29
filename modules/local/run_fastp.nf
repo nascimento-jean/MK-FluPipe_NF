@@ -191,4 +191,31 @@ process RUN_FASTP {
         } > "${meta.id}_fastp_manifest.tsv"
         """
     }
+
+    stub:
+    if( meta.layout == 'paired' ) {
+        """
+        mkdir -p trimmed reports
+        printf '@${meta.id}/1\\nACGTACGT\\n+\\nIIIIIIII\\n' | gzip -c > "trimmed/${meta.id}_R1.trimmed.fastq.gz"
+        printf '@${meta.id}/2\\nACGTACGT\\n+\\nIIIIIIII\\n' | gzip -c > "trimmed/${meta.id}_R2.trimmed.fastq.gz"
+        echo '<html><body>stub fastp</body></html>' > "reports/${meta.id}.fastp.html"
+        printf '{"summary":{"before_filtering":{"total_reads":2,"total_bases":16},"after_filtering":{"total_reads":2,"q30_rate":1.0,"read1_mean_length":8}},"filtering_result":{"passed_filter_reads":2}}\\n' > "reports/${meta.id}.fastp.json"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tread_count\\tread1\\tread2\\thtml\\tjson\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "2" "trimmed/${meta.id}_R1.trimmed.fastq.gz" "trimmed/${meta.id}_R2.trimmed.fastq.gz" "reports/${meta.id}.fastp.html" "reports/${meta.id}.fastp.json"
+        } > "${meta.id}_fastp_manifest.tsv"
+        """
+    }
+    else {
+        """
+        mkdir -p trimmed reports
+        printf '@${meta.id}\\nACGTACGT\\n+\\nIIIIIIII\\n' | gzip -c > "trimmed/${meta.id}.trimmed.fastq.gz"
+        echo '<html><body>stub fastp</body></html>' > "reports/${meta.id}.fastp.html"
+        printf '{"summary":{"before_filtering":{"total_reads":1,"total_bases":8},"after_filtering":{"total_reads":1,"q30_rate":1.0,"read1_mean_length":8}},"filtering_result":{"passed_filter_reads":1}}\\n' > "reports/${meta.id}.fastp.json"
+        {
+            printf 'sample_id\\tlayout\\tseq_type\\tread_count\\tread1\\tread2\\thtml\\tjson\\n'
+            printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "${meta.id}" "${meta.layout}" "${meta.seq_type}" "1" "trimmed/${meta.id}.trimmed.fastq.gz" "-" "reports/${meta.id}.fastp.html" "reports/${meta.id}.fastp.json"
+        } > "${meta.id}_fastp_manifest.tsv"
+        """
+    }
 }

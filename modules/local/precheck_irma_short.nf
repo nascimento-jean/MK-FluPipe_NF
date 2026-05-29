@@ -13,5 +13,9 @@ process PRECHECK_IRMA_SHORT {
         exit 1
     fi
     """
-}
 
+    stub:
+    """
+    true
+    """
+}
