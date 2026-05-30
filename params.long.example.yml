@@ -58,3 +58,5 @@ irma_max_forks: 2
 mk_flu_docker_image: mk-flu-pipe/mk_flu_tools:local
 medaka_docker_image: mk-flu-pipe/medaka_tools:local
 irma_docker_image: cdcgov/irma:v1.3.2
+container_registry: ghcr.io/nascimento-jean
+container_tag: latest

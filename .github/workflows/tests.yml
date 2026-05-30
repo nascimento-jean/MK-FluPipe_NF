@@ -54,6 +54,12 @@ jobs:
           sudo mv nextflow /usr/local/bin/
           nextflow -version
 
+      - name: Validate container profiles
+        run: |
+          nextflow config -profile linux,docker > /tmp/mkflupipe_docker.config
+          nextflow config -profile linux,docker,ghcr > /tmp/mkflupipe_docker_ghcr.config
+          nextflow config -profile linux,singularity,ghcr > /tmp/mkflupipe_singularity_ghcr.config
+
       - name: Reject missing input directory
         run: |
           set +e

@@ -123,6 +123,31 @@ Build Singularity/Apptainer images:
 bash containers/build_singularity_images.sh
 ```
 
+Public container images can also be used from GitHub Container Registry (GHCR) after they are published by the repository workflow:
+
+| Image | GHCR path |
+|---|---|
+| Main workflow tools | `ghcr.io/nascimento-jean/mk-flupipe-nf-mk-flu-tools:<tag>` |
+| Medaka tools | `ghcr.io/nascimento-jean/mk-flupipe-nf-medaka-tools:<tag>` |
+
+Use the extra `ghcr` profile to replace local images with GHCR images:
+
+```bash
+-profile linux,docker,ghcr
+```
+
+or:
+
+```bash
+-profile linux,singularity,ghcr
+```
+
+By default, the `ghcr` profile uses `--container_tag latest`. For reproducible runs, prefer a release tag:
+
+```bash
+--container_tag v0.1.0
+```
+
 ## Running The Pipeline
 
 Use the `linux` profile together with either `docker` or `singularity`.
@@ -135,6 +160,18 @@ or:
 
 ```bash
 -profile linux,singularity
+```
+
+To use published GHCR images instead of locally built images, add the `ghcr` profile:
+
+```bash
+-profile linux,docker,ghcr
+```
+
+or:
+
+```bash
+-profile linux,singularity,ghcr
 ```
 
 The `wsl` and `ubuntu` profiles are retained as compatibility aliases, but `linux` is the recommended profile.
@@ -383,6 +420,13 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--run_fullvarcall` | `false` | Run full protein mutation calling. |
 | `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
 | `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
+
+### Container registry parameters
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `--container_registry` | `ghcr.io/nascimento-jean` | Registry namespace used by the `ghcr` profile. |
+| `--container_tag` | `latest` | Image tag used by the `ghcr` profile. Use a release tag such as `v0.1.0` for reproducible runs. |
 
 ### Short-read preprocessing parameters
 

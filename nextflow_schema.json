@@ -280,6 +280,16 @@
       "default": "",
       "description": "Path to the legacy Bash script used only when run_legacy_bridge is true."
     },
+    "container_registry": {
+      "type": "string",
+      "default": "ghcr.io/nascimento-jean",
+      "description": "Container registry namespace used by the ghcr profile."
+    },
+    "container_tag": {
+      "type": "string",
+      "default": "latest",
+      "description": "Container tag used by the ghcr profile, for example latest, v0.1.0, or sha-<commit>."
+    },
     "max_cpus": {
       "type": [
         "integer",
