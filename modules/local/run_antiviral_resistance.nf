@@ -19,4 +19,11 @@ process RUN_ANTIVIRAL_RESISTANCE {
 
     python "${projectDir}/bin/run_antiviral_resistance.py"         --db "${antiviral_db}"         --canonical-refs-dir "${canonical_refs_dir}"         --blast-summary "${blast_summary}"         --output-tsv antiviral_resistance/antiviral_resistance.tsv         --log-file reports/antiviral_resistance.log         --ivar-freq ${params.ivar_freq}         input*/*
     """
+
+    stub:
+    """
+    mkdir -p antiviral_resistance reports
+    printf 'sample\tgene\taa_position\twt_who\tmut_who\talt_observed\tfrequency\tdepth_total\tdrug\tsignificance\tnomenclature\n' > antiviral_resistance/antiviral_resistance.tsv
+    echo 'stub short-read antiviral resistance report' > reports/antiviral_resistance.log
+    """
 }

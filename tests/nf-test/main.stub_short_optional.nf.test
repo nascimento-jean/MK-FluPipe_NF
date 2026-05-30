@@ -1,0 +1,49 @@
+nextflow_pipeline {
+
+    name "MK Flu-Pipe short-read optional analyses stub workflow"
+    script "main.nf"
+
+    test("runs the short-read iVar antiviral H5 and full variant workflow graph with process stubs") {
+        options "-stub-run"
+
+        when {
+            params {
+                input_dir = "${projectDir}/tests/data/short_paired"
+                output_dir = "${projectDir}/tests/output/nf-test/stub-short-optional-workflow"
+                irma_module = "FLU-utr"
+                seq_type = "short"
+                host_depletion = "false"
+                run_ivar = "true"
+                run_antiviral = "true"
+                run_h5_virulence = "true"
+                run_fullvarcall = "true"
+                run_medaka = "false"
+                max_cpus = 2
+                queue_size = 1
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def outputDir = path("${projectDir}/tests/output/nf-test/stub-short-optional-workflow")
+            def surveillance = outputDir.resolve("Surveillance_Outputs")
+            assert surveillance.resolve("surveillance_report.html").exists()
+            assert surveillance.resolve("typing_results.tsv").exists()
+            assert surveillance.resolve("run_summary.json").exists()
+            assert surveillance.resolve("antiviral_resistance/antiviral_resistance.tsv").exists()
+            assert surveillance.resolve("h5_virulence/h5_virulence_markers.tsv").exists()
+            assert surveillance.resolve("full_variant_calls/all_samples_protein_mutations.tsv").exists()
+            assert outputDir.resolve("variant_calls/SAMPLE_A").exists()
+            assert outputDir.resolve("full_variant_calls/SAMPLE_A").exists()
+            assert outputDir.resolve("assembly_final/antiviral_resistance/antiviral_resistance.tsv").exists()
+            assert outputDir.resolve("assembly_final/h5_virulence/h5_virulence_markers.tsv").exists()
+
+            def summary = new groovy.json.JsonSlurper().parse(surveillance.resolve("run_summary.json"))
+            assert summary.total_samples == 1
+            assert surveillance.resolve("full_variant_calls/all_samples_protein_mutations.tsv").text.contains("SAMPLE_A")
+            assert surveillance.resolve("surveillance_report.html").text.contains("Protein Mutations")
+            assert surveillance.resolve("surveillance_report.html").text.contains("Resistance & H5")
+        }
+    }
+}

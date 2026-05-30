@@ -24,4 +24,9 @@ process PRECHECK_FULLVARCALL {
         }
     done
     """
+
+    stub:
+    """
+    true
+    """
 }

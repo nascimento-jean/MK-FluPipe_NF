@@ -33,4 +33,12 @@ process RUN_FULLVARCALL_SAMPLE {
         --threads ${task.cpus} \
         --reads ${readsArgs}
     """
+
+    stub:
+    """
+    mkdir -p "full_variant_calls/${meta.id}" reports
+    printf 'sample\ttype\tsegment\tgene\taa_position\tref_aa\talt_aa\tfrequency\tdepth\tmutation\n' > "full_variant_calls/${meta.id}/${meta.id}_protein_mutations.tsv"
+    printf '${meta.id}\t${flu_type}\tHA\tHA\t1\tM\tI\t0.5000\t100\tM1I\n' >> "full_variant_calls/${meta.id}/${meta.id}_protein_mutations.tsv"
+    echo 'stub full variant calls for ${meta.id}' > "reports/${meta.id}.fullvarcall.log"
+    """
 }

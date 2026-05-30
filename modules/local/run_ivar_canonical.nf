@@ -65,4 +65,11 @@ process RUN_IVAR_CANONICAL {
         fi
     done
     """
+
+    stub:
+    """
+    mkdir -p "variant_calls/${meta.id}" reports
+    printf 'REGION\tPOS\tREF\tALT\tREF_DP\tREF_RV\tREF_QUAL\tALT_DP\tALT_RV\tALT_QUAL\tALT_FREQ\tTOTAL_DP\tPVAL\tPASS\tGFF_FEATURE\tREF_CODON\tREF_AA\tALT_CODON\tALT_AA\n' > "variant_calls/${meta.id}/${meta.id}_NA_canonical_ivar.tsv"
+    echo 'stub canonical iVar calls for ${meta.id}' > "reports/${meta.id}.ivar.log"
+    """
 }

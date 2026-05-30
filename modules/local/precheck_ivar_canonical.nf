@@ -10,4 +10,9 @@ process PRECHECK_IVAR_CANONICAL {
     minimap2 --version >/dev/null
     samtools --version >/dev/null
     """
+
+    stub:
+    """
+    true
+    """
 }

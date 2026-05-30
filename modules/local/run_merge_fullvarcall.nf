@@ -27,4 +27,14 @@ process RUN_MERGE_FULLVARCALL {
     printf 'Aggregated protein mutation files: %s
 ' "\$count"
     """
+
+    stub:
+    """
+    mkdir -p full_variant_calls
+    printf 'sample\ttype\tsegment\tgene\taa_position\tref_aa\talt_aa\tfrequency\tdepth\tmutation\n' > full_variant_calls/all_samples_protein_mutations.tsv
+    for tsv in input*/*/*_protein_mutations.tsv; do
+        [ -f "\$tsv" ] || continue
+        tail -n +2 "\$tsv" >> full_variant_calls/all_samples_protein_mutations.tsv
+    done
+    """
 }

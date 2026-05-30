@@ -29,4 +29,13 @@ process PREPARE_REFSEQ_SEGMENTS {
         ln -sf "\$ref" "refseq_segments/\$(basename "\$ref")"
     done
     """
+
+    stub:
+    """
+    mkdir -p refseq_segments
+    for ref in A_HA A_NA A_MP B_HA B_NA B_MP; do
+        printf '>%s\\nACGTACGTACGTACGT\\n' "\$ref" > "refseq_segments/\${ref}.fa"
+    done
+    echo 'stub refseq segments' > refseq_segments.log
+    """
 }
