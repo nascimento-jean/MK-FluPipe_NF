@@ -214,7 +214,6 @@ def validateParams() {
         'irma_threads',
         'fastp_max_forks',
         'fastp_timeout',
-        'fastp_startup_timeout',
         'host_depletion_max_forks',
         'irma_max_forks',
         'phylogeny_min_sequences',
@@ -229,6 +228,9 @@ def validateParams() {
 
     if( !isIntegerLike(params.max_len_long) || params.max_len_long.toString().toInteger() < 0 ) {
         errors << "--max_len_long must be 0 or a positive integer"
+    }
+    if( !isIntegerLike(params.fastp_startup_timeout) || params.fastp_startup_timeout.toString().toInteger() < 0 ) {
+        errors << "--fastp_startup_timeout must be 0 or a positive integer"
     }
     else if( isIntegerLike(params.min_len_long) && params.max_len_long.toString().toInteger() > 0 && params.max_len_long.toString().toInteger() < params.min_len_long.toString().toInteger() ) {
         errors << "--max_len_long must be greater than or equal to --min_len_long, or 0 to disable the upper limit"

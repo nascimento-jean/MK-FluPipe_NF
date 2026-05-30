@@ -343,9 +343,9 @@
       "description": "Hard timeout in seconds for fastp tasks."
     },
     "fastp_startup_timeout": {
-      "$ref": "#/definitions/positive_integer",
-      "default": 300,
-      "description": "Startup watchdog in seconds for fastp tasks."
+      "$ref": "#/definitions/non_negative_integer",
+      "default": 0,
+      "description": "Optional startup watchdog in seconds for fastp tasks. Use 0 to disable it."
     },
     "host_depletion_max_forks": {
       "$ref": "#/definitions/positive_integer",

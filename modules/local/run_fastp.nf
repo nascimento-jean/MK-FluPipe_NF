@@ -25,9 +25,10 @@ process RUN_FASTP {
     // the task instead of hanging forever. Configurable via params.fastp_timeout
     // in nextflow.config (default 1800s = 30 min).
     def fastpTimeoutSec = (params.fastp_timeout ?: 1800) as int
-    // Startup watchdog: if fastp creates no output at all within this window,
-    // treat it as a dead start and let Nextflow retry immediately.
-    def fastpStartupTimeoutSec = (params.fastp_startup_timeout ?: 300) as int
+    // Optional startup watchdog. It is disabled by default because fastp can
+    // spend several minutes detecting adapters/filtering before creating final
+    // output files, especially for larger samples.
+    def fastpStartupTimeoutSec = (params.fastp_startup_timeout ?: 0) as int
 
     if( meta.layout == 'paired' ) {
         """
@@ -47,7 +48,7 @@ process RUN_FASTP {
                     fi
                 done
 
-                if [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
+                if [ ${fastpStartupTimeoutSec} -gt 0 ] && [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
                     echo "fastp produced no output for ${fastpStartupTimeoutSec}s; killing stalled process." >&2
                     pkill -TERM -P "\$fastp_pid" 2>/dev/null || true
                     kill -TERM "\$fastp_pid" 2>/dev/null || true
@@ -138,7 +139,7 @@ process RUN_FASTP {
                     fi
                 done
 
-                if [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
+                if [ ${fastpStartupTimeoutSec} -gt 0 ] && [ "\$waited" -ge ${fastpStartupTimeoutSec} ]; then
                     echo "fastp produced no output for ${fastpStartupTimeoutSec}s; killing stalled process." >&2
                     pkill -TERM -P "\$fastp_pid" 2>/dev/null || true
                     kill -TERM "\$fastp_pid" 2>/dev/null || true
