@@ -26,7 +26,7 @@ The `ghcr` profile maps the local image names to:
 - `ghcr.io/nascimento-jean/mk-flupipe-nf-mk-flu-tools:<tag>`
 - `ghcr.io/nascimento-jean/mk-flupipe-nf-medaka-tools:<tag>`
 
-Use `--container_tag` to select a specific published version, for example `--container_tag v0.1.0`.
+Use `--container_tag` to select a specific published version, for example `--container_tag v0.1.2`.
 
 ## Build Docker images
 

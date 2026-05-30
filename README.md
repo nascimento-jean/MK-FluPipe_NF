@@ -145,7 +145,7 @@ or:
 By default, the `ghcr` profile uses `--container_tag latest`. For reproducible runs, prefer a release tag:
 
 ```bash
---container_tag v0.1.0
+--container_tag v0.1.2
 ```
 
 ## Running The Pipeline
@@ -426,7 +426,7 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | Parameter | Default | Description |
 |---|---:|---|
 | `--container_registry` | `ghcr.io/nascimento-jean` | Registry namespace used by the `ghcr` profile. |
-| `--container_tag` | `latest` | Image tag used by the `ghcr` profile. Use a release tag such as `v0.1.0` for reproducible runs. |
+| `--container_tag` | `latest` | Image tag used by the `ghcr` profile. Use a release tag such as `v0.1.2` for reproducible runs. |
 
 ### Short-read preprocessing parameters
 
