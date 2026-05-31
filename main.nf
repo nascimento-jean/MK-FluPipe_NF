@@ -142,10 +142,6 @@ def validateParams() {
         errors << "--run_snpeff true requires --run_fullvarcall true because SnpEff annotation uses full variant call outputs"
     }
 
-    if( runSnpeff && seqType == 'long' ) {
-        errors << "--run_snpeff is currently supported only for short-read full variant calls"
-    }
-
     if( seqType == 'long' && params.adapter_fasta ) {
         warnings << "--adapter_fasta is ignored for long-read runs because preprocessing uses Filtlong, not fastp."
     }

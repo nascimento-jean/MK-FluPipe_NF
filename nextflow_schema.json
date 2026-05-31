@@ -147,7 +147,7 @@
     "run_snpeff": {
       "type": "boolean",
       "default": false,
-      "description": "Run optional experimental SnpEff annotation for short-read full variant calls. Requires run_fullvarcall."
+      "description": "Run optional experimental SnpEff annotation for full variant call iVar TSV outputs. Requires run_fullvarcall."
     },
     "adapter_fasta": {
       "$ref": "#/definitions/path",

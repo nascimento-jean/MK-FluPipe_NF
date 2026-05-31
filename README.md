@@ -207,7 +207,8 @@ nextflow run main.nf \
   --run_medaka true \
   --run_antiviral true \
   --run_h5_virulence true \
-  --run_fullvarcall true
+  --run_fullvarcall true \
+  --run_snpeff true
 ```
 
 ### Full short-read example with QC, GISAID, metadata, phylogeny, and resources
@@ -265,6 +266,7 @@ nextflow run main.nf \
   --run_antiviral true \
   --run_h5_virulence true \
   --run_fullvarcall true \
+  --run_snpeff true \
   --metadata_csv /path/to/sample_metadata.csv \
   --run_phylogeny true \
   --phylogeny_context_fasta /path/to/context_ha_na.fasta \
@@ -419,7 +421,7 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--run_antiviral` | `true` | Run antiviral resistance analysis. |
 | `--run_h5_virulence` | `true` | Run H5 virulence marker analysis. |
 | `--run_fullvarcall` | `false` | Run full protein mutation calling. |
-| `--run_snpeff` | `false` | Run optional experimental SnpEff annotation for short-read full variant calls. Requires `--run_fullvarcall true`. |
+| `--run_snpeff` | `false` | Run optional experimental SnpEff annotation for full variant call iVar TSV outputs. Requires `--run_fullvarcall true`. Works for short-read and long-read full variant call outputs. |
 | `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
 | `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
 
@@ -532,7 +534,7 @@ All outputs are written under `--output_dir`.
 | `variant_calls_canonical_long/` | Long-read canonical Medaka outputs. |
 | `full_variant_calls/` | Per-sample and merged full protein mutation reports. |
 | `functional_annotation/` | Structured functional annotation table derived from full variant call protein mutation outputs. |
-| `snpeff_annotation/` | Optional SnpEff annotation table generated from full variant call iVar TSV outputs when `--run_snpeff true` is used. |
+| `snpeff_annotation/` | Optional SnpEff annotation table generated from short-read or long-read full variant call iVar TSV outputs when `--run_snpeff true` is used. |
 | `Surveillance_Outputs/` | Main final delivery folder for dashboard, final tables, FASTA exports, GISAID-ready files, metadata, and phylogeny outputs. |
 | `legacy_bridge/` | Optional legacy bridge outputs when enabled. |
 
