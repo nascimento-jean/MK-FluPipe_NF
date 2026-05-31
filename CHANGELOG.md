@@ -14,6 +14,7 @@ The project follows semantic versioning whenever possible:
 
 - Added tiny short-read and long-read `-stub-run` integration tests that traverse the main workflow and verify final dashboard, surveillance, metadata, phylogeny, GISAID, antiviral, H5, iVar, Medaka, and full-variant-call outputs.
 - Added a structured functional annotation output for full variant calls (`functional_annotation/functional_annotation.tsv`) derived from RefSeq GFF3 and iVar protein mutation tables, with dashboard and download integration.
+- Added optional experimental SnpEff annotation for short-read full variant calls (`--run_snpeff true`), with dashboard and download integration.
 
 ### Fixed
 

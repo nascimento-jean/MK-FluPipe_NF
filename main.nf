@@ -40,6 +40,7 @@ include { PREPARE_REFSEQ_SEGMENTS } from './modules/local/prepare_refseq_segment
 include { RUN_FULLVARCALL_SAMPLE } from './modules/local/run_fullvarcall_sample'
 include { RUN_MERGE_FULLVARCALL } from './modules/local/run_merge_fullvarcall'
 include { RUN_FUNCTIONAL_ANNOTATION } from './modules/local/run_functional_annotation'
+include { RUN_SNPEFF_ANNOTATION } from './modules/local/run_snpeff_annotation'
 include { RUN_IVAR_CANONICAL } from './modules/local/run_ivar_canonical'
 include { PREPARE_ANTIVIRAL_DB } from './modules/local/prepare_antiviral_db'
 include { RUN_ANTIVIRAL_RESISTANCE } from './modules/local/run_antiviral_resistance'
@@ -83,6 +84,8 @@ def validateParams() {
     def runIvar = paramBool(params.run_ivar)
     def runMedaka = paramBool(params.run_medaka)
     def runAntiviral = paramBool(params.run_antiviral)
+    def runFullvarcall = paramBool(params.run_fullvarcall)
+    def runSnpeff = paramBool(params.run_snpeff)
     def runPhylogeny = paramBool(params.run_phylogeny)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
 
@@ -133,6 +136,14 @@ def validateParams() {
 
     if( seqType == 'long' && runAntiviral && !runMedaka ) {
         errors << "Long-read antiviral resistance analysis requires --run_medaka true because canonical long-read variants are produced with Medaka."
+    }
+
+    if( runSnpeff && !runFullvarcall ) {
+        errors << "--run_snpeff true requires --run_fullvarcall true because SnpEff annotation uses full variant call outputs"
+    }
+
+    if( runSnpeff && seqType == 'long' ) {
+        errors << "--run_snpeff is currently supported only for short-read full variant calls"
     }
 
     if( seqType == 'long' && params.adapter_fasta ) {
@@ -345,6 +356,7 @@ workflow {
     def runAntiviral = paramBool(params.run_antiviral)
     def runH5Virulence = paramBool(params.run_h5_virulence)
     def runFullvarcall = paramBool(params.run_fullvarcall)
+    def runSnpeff = paramBool(params.run_snpeff)
     def runPhylogeny = paramBool(params.run_phylogeny)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
     def metadataCsv = (params.metadata_csv ?: '').toString().trim()
@@ -357,6 +369,7 @@ workflow {
     log.info "IRMA module     : ${params.irma_module}"
     log.info "Seq type        : ${params.seq_type}"
     log.info "Seq mode        : ${params.seq_mode ?: 'auto'}"
+    log.info "SnpEff          : ${runSnpeff ? 'enabled' : 'disabled'}"
     log.info "Phylogeny       : ${runPhylogeny ? 'HA/NA with Augur' : 'disabled'}"
     log.info "Legacy bridge   : ${runLegacyBridge}"
 
@@ -744,6 +757,14 @@ workflow {
             RUN_MERGE_FULLVARCALL.out.summary,
             RUN_BLAST_TYPING.out.summary
         )
+
+        if( runSnpeff ) {
+            RUN_SNPEFF_ANNOTATION(
+                PREPARE_REFSEQ_SEGMENTS.out.refs_dir,
+                RUN_BLAST_TYPING.out.summary,
+                RUN_FULLVARCALL_SAMPLE.out.sample_dirs.collect()
+            )
+        }
     }
 
     if( runH5Virulence ) {
@@ -785,6 +806,9 @@ workflow {
     if( runFullvarcall ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_MERGE_FULLVARCALL.out.summary)
         surveillanceDependencies = surveillanceDependencies.mix(RUN_FUNCTIONAL_ANNOTATION.out.report)
+        if( runSnpeff ) {
+            surveillanceDependencies = surveillanceDependencies.mix(RUN_SNPEFF_ANNOTATION.out.report)
+        }
     }
 
     if( metadataCsv ) {

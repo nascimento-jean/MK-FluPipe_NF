@@ -243,7 +243,8 @@ nextflow run main.nf \
   --max_memory "24 GB" \
   --queue_size 2 \
   --run_ivar true \
-  --run_fullvarcall true
+  --run_fullvarcall true \
+  --run_snpeff true
 ```
 
 ### Full long-read example with metadata and phylogeny
@@ -418,6 +419,7 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--run_antiviral` | `true` | Run antiviral resistance analysis. |
 | `--run_h5_virulence` | `true` | Run H5 virulence marker analysis. |
 | `--run_fullvarcall` | `false` | Run full protein mutation calling. |
+| `--run_snpeff` | `false` | Run optional experimental SnpEff annotation for short-read full variant calls. Requires `--run_fullvarcall true`. |
 | `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
 | `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
 
@@ -530,6 +532,7 @@ All outputs are written under `--output_dir`.
 | `variant_calls_canonical_long/` | Long-read canonical Medaka outputs. |
 | `full_variant_calls/` | Per-sample and merged full protein mutation reports. |
 | `functional_annotation/` | Structured functional annotation table derived from full variant call protein mutation outputs. |
+| `snpeff_annotation/` | Optional SnpEff annotation table generated from full variant call iVar TSV outputs when `--run_snpeff true` is used. |
 | `Surveillance_Outputs/` | Main final delivery folder for dashboard, final tables, FASTA exports, GISAID-ready files, metadata, and phylogeny outputs. |
 | `legacy_bridge/` | Optional legacy bridge outputs when enabled. |
 
@@ -547,6 +550,7 @@ All outputs are written under `--output_dir`.
 | `Surveillance_Outputs/run_summary.json` | JSON version of the integrated run summary. |
 | `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA with per-sample/per-segment identifiers. |
 | `Surveillance_Outputs/functional_annotation/functional_annotation.tsv` | Structured functional annotation of protein mutation calls when `--run_fullvarcall true` is used. |
+| `Surveillance_Outputs/snpeff_annotation/snpeff_annotation.tsv` | Optional SnpEff annotation when `--run_snpeff true` is used. |
 | `Surveillance_Outputs/metadata.csv` | Validated sample metadata when `--metadata_csv` is provided. |
 | `Surveillance_Outputs/README_outputs.txt` | Plain-text explanation of the final delivery folder. |
 
@@ -583,6 +587,7 @@ Generated only when `--run_phylogeny true`.
 | `full_variant_calls/*.fullvarcall` | Per-sample protein mutation reports. |
 | `full_variant_calls/all_samples_protein_mutations.tsv` | Consolidated protein mutation table. |
 | `functional_annotation/functional_annotation.tsv` | Per-mutation table with sample, type/subtype, segment, gene, amino-acid change, effect class, impact class, frequency, depth, and annotation source. |
+| `snpeff_annotation/snpeff_annotation.tsv` | Optional SnpEff-derived table with sample, segment, RefSeq accession, nucleotide change, predicted effect, impact, gene/feature, HGVS fields, frequency, depth, and status. |
 
 ## Databases And Cache
 

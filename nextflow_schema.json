@@ -144,6 +144,11 @@
       "default": false,
       "description": "Run full protein mutation calling."
     },
+    "run_snpeff": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run optional experimental SnpEff annotation for short-read full variant calls. Requires run_fullvarcall."
+    },
     "adapter_fasta": {
       "$ref": "#/definitions/path",
       "default": "",

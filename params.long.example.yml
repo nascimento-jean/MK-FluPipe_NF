@@ -14,6 +14,7 @@ run_medaka: true
 run_antiviral: true
 run_h5_virulence: true
 run_fullvarcall: true
+run_snpeff: false
 
 adapter_fasta: ""
 min_len_short: 75

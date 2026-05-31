@@ -111,6 +111,8 @@ def main() -> int:
             "true",
             "--run_fullvarcall",
             "true",
+            "--run_snpeff",
+            "true",
             "--metadata_csv",
             str(REPO_ROOT / "tests" / "data" / "mini_short" / "metadata.csv"),
             "--gisaid_location",
@@ -131,6 +133,7 @@ def main() -> int:
     assert (short_out / "Surveillance_Outputs" / "antiviral_resistance" / "antiviral_resistance.tsv").exists()
     assert (short_out / "Surveillance_Outputs" / "h5_virulence" / "h5_virulence_markers.tsv").exists()
     assert (short_out / "Surveillance_Outputs" / "functional_annotation" / "functional_annotation.tsv").exists()
+    assert (short_out / "Surveillance_Outputs" / "snpeff_annotation" / "snpeff_annotation.tsv").exists()
 
     long_out = run_nextflow(
         "mini-long-pipeline",
