@@ -130,6 +130,7 @@ def main() -> int:
     assert (short_out / "full_variant_calls" / "MINI-SHORT-001").exists(), "short full variant output missing"
     assert (short_out / "Surveillance_Outputs" / "antiviral_resistance" / "antiviral_resistance.tsv").exists()
     assert (short_out / "Surveillance_Outputs" / "h5_virulence" / "h5_virulence_markers.tsv").exists()
+    assert (short_out / "Surveillance_Outputs" / "functional_annotation" / "functional_annotation.tsv").exists()
 
     long_out = run_nextflow(
         "mini-long-pipeline",

@@ -561,6 +561,7 @@ def main():
     antiviral_rows = read_tsv(dep_map.get("antiviral_resistance.tsv", Path("__missing__")))
     h5_rows = read_tsv(dep_map.get("h5_virulence_markers.tsv", Path("__missing__")))
     fullvar_rows = read_tsv(dep_map.get("all_samples_protein_mutations.tsv", Path("__missing__")))
+    functional_rows = read_tsv(dep_map.get("functional_annotation.tsv", Path("__missing__")))
 
     nextclade_map = {row["sample"]: row for row in nextclade_rows}
     assembly_qc_map = {row["sample"]: row for row in assembly_qc_rows}
@@ -679,6 +680,7 @@ def main():
     local_antiviral = ensure_local_copy(dep_map.get("antiviral_resistance.tsv"), out_dir / "antiviral_resistance" / "antiviral_resistance.tsv")
     local_h5 = ensure_local_copy(dep_map.get("h5_virulence_markers.tsv"), out_dir / "h5_virulence" / "h5_virulence_markers.tsv")
     local_fullvar = ensure_local_copy(dep_map.get("all_samples_protein_mutations.tsv"), out_dir / "full_variant_calls" / "all_samples_protein_mutations.tsv")
+    local_functional = ensure_local_copy(dep_map.get("functional_annotation.tsv"), out_dir / "functional_annotation" / "functional_annotation.tsv")
     local_multiqc = ensure_local_copy(dep_map.get("multiqc_report.html"), out_dir / "multiqc_report.html")
     local_metadata = ensure_local_copy(dep_map.get("validated_metadata.csv"), out_dir / "metadata.csv")
     local_phylogeny = ensure_local_copy(dep_map.get("phylogeny"), out_dir / "phylogeny")
@@ -754,6 +756,7 @@ def main():
         ("Antiviral resistance", "antiviral_resistance/antiviral_resistance.tsv" if local_antiviral else ""),
         ("H5 virulence markers", "h5_virulence/h5_virulence_markers.tsv" if local_h5 else ""),
         ("Protein mutations", "full_variant_calls/all_samples_protein_mutations.tsv" if local_fullvar else ""),
+        ("Functional annotation", "functional_annotation/functional_annotation.tsv" if local_functional else ""),
         ("MultiQC full report", "multiqc_report.html" if local_multiqc else ""),
         ("Sample metadata", "metadata.csv" if local_metadata else ""),
         ("Phylogeny summary", "phylogeny/phylogeny_summary.tsv" if local_phylogeny else ""),
@@ -936,6 +939,9 @@ def main():
         "<div class='tab-pane fade' id='mutations'>",
         "<div class='section'>Protein mutations by segment</div><div class='panel'>",
         render_protein_table("tbl_fvc", protein_summary_rows),
+        "</div>",
+        "<div class='section'>Structured functional annotation</div><div class='panel'>",
+        render_html_table("tbl_funcann", functional_rows, list(functional_rows[0].keys()), "Functional annotation derived from RefSeq GFF3 and iVar protein mutation calls") if functional_rows else render_empty_panel("No structured functional annotation rows were produced in this run."),
         "</div></div>",
         ("<div class='tab-pane fade' id='metadata'><div class='section'>Sample metadata</div><div class='panel'>"
          + render_html_table("tbl_metadata", metadata_rows, metadata_fields, "Validated metadata for phylogenetic analyses")
@@ -960,7 +966,7 @@ def main():
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap5.min.js'></script>",
-            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_metadata');dt('tbl_phylogeny');dt('tbl_coinf',{paging:false,info:false});});</script>",
+            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_funcann');dt('tbl_metadata');dt('tbl_phylogeny');dt('tbl_coinf',{paging:false,info:false});});</script>",
             "<script>function dlExcel(tid){var wb=XLSX.utils.book_new();var ws=XLSX.utils.table_to_sheet(document.getElementById(tid));XLSX.utils.book_append_sheet(wb,ws,tid);XLSX.writeFile(wb,'MKFluPipe_'+tid+'_'+new Date().toISOString().slice(0,10)+'.xlsx');}</script>",
             f"<script>const charts={json.dumps(charts, ensure_ascii=False)};",
             """
@@ -1022,6 +1028,7 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         "  antiviral_resistance/antiviral_resistance.tsv Antiviral resistance mutations\n"
         "  h5_virulence/h5_virulence_markers.tsv      H5 virulence markers (if detected)\n"
         "  full_variant_calls/all_samples_protein_mutations.tsv Protein mutation calls\n"
+        "  functional_annotation/functional_annotation.tsv Structured functional annotation of protein mutation calls\n"
         "  GISAID_ready/                              FASTA + CSV template EpiFlu (if location provided)\n"
         "  README_outputs.txt                         This file\n"
     )

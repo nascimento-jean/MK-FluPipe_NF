@@ -39,6 +39,7 @@ include { PRECHECK_FULLVARCALL } from './modules/local/precheck_fullvarcall'
 include { PREPARE_REFSEQ_SEGMENTS } from './modules/local/prepare_refseq_segments'
 include { RUN_FULLVARCALL_SAMPLE } from './modules/local/run_fullvarcall_sample'
 include { RUN_MERGE_FULLVARCALL } from './modules/local/run_merge_fullvarcall'
+include { RUN_FUNCTIONAL_ANNOTATION } from './modules/local/run_functional_annotation'
 include { RUN_IVAR_CANONICAL } from './modules/local/run_ivar_canonical'
 include { PREPARE_ANTIVIRAL_DB } from './modules/local/prepare_antiviral_db'
 include { RUN_ANTIVIRAL_RESISTANCE } from './modules/local/run_antiviral_resistance'
@@ -738,6 +739,11 @@ workflow {
         RUN_MERGE_FULLVARCALL(
             RUN_FULLVARCALL_SAMPLE.out.sample_dirs.collect()
         )
+
+        RUN_FUNCTIONAL_ANNOTATION(
+            RUN_MERGE_FULLVARCALL.out.summary,
+            RUN_BLAST_TYPING.out.summary
+        )
     }
 
     if( runH5Virulence ) {
@@ -778,6 +784,7 @@ workflow {
 
     if( runFullvarcall ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_MERGE_FULLVARCALL.out.summary)
+        surveillanceDependencies = surveillanceDependencies.mix(RUN_FUNCTIONAL_ANNOTATION.out.report)
     }
 
     if( metadataCsv ) {
