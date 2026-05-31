@@ -108,6 +108,10 @@ jobs:
           test "$status" -ne 0
           grep -q "requires --run_medaka true" tests/output_invalid_long_antiviral.log
 
+      - name: Run mini pipeline integration test
+        run: |
+          python tests/check_mini_pipeline.py
+
   nf-test:
     name: nf-test
     runs-on: ubuntu-latest

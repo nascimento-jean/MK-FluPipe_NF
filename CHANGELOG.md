@@ -10,6 +10,10 @@ The project follows semantic versioning whenever possible:
 
 ## [Unreleased]
 
+### Added
+
+- Added tiny short-read and long-read `-stub-run` integration tests that traverse the main workflow and verify final dashboard, surveillance, metadata, phylogeny, GISAID, antiviral, H5, iVar, Medaka, and full-variant-call outputs.
+
 ### Fixed
 
 - Disabled the short fastp startup watchdog by default (`fastp_startup_timeout = 0`) to avoid killing healthy fastp jobs that take several minutes before producing final output files.
