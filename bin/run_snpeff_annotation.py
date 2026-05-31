@@ -219,12 +219,13 @@ def run_command(command: list[str], log_path: Path) -> tuple[int, str]:
 
 def prepare_snpeff_db(accession: str, fasta: Path, gff: Path, work_dir: Path, log_path: Path) -> tuple[str, Path] | None:
     genome = f"mkflupipe_{accession}"
+    work_dir = work_dir.resolve()
     config = work_dir / "snpEff.config"
-    data_dir = work_dir / "data"
+    data_dir = (work_dir / "data").resolve()
     genome_dir = data_dir / genome
     genome_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(fasta, genome_dir / "sequences.fa")
-    shutil.copy2(gff, genome_dir / "genes.gff")
+    shutil.copy2(fasta.resolve(), genome_dir / "sequences.fa")
+    shutil.copy2(gff.resolve(), genome_dir / "genes.gff")
     config.write_text(f"data.dir = {data_dir}\n{genome}.genome : {accession}\n", encoding="utf-8")
     code, message = run_command(["snpEff", "build", "-gff3", "-noCheckCds", "-noCheckProtein", "-c", str(config), genome], log_path)
     if code != 0:
