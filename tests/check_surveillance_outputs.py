@@ -68,6 +68,19 @@ def main() -> int:
             "sample\tmarker\tstatus\n",
         )
         write(
+            deps / "h5_avian_summary.tsv",
+            "sample\ttype\tsubtype_HA\tsubtype_NA\tsegments_available\tselected_for_h5_avian\tgenoflu_status\tgenoflu_genotype\tgenoflu_message\tflumut_status\tflumut_markers_detected\tflumut_message\n"
+            "SAMPLE_A\tA\tH5\tN1\t4,6\tyes\tok\tGsGD-like reassortant\tGenoFLU completed\tok\t1\tFluMut completed\n",
+        )
+        write(
+            deps / "flumut_markers.tsv",
+            "sample\tmarker\tgene\n"
+            "SAMPLE_A\tPB2_E627K\tPB2\n",
+        )
+        write(deps / "genoflu_summary.tsv", "sample\ttype\tsubtype_HA\tsubtype_NA\tsegments_available\tselected_for_h5_avian\tgenoflu_status\tgenoflu_genotype\tgenoflu_message\n")
+        write(deps / "flumut_mutations.tsv", "sample\tmutation\tgene\n")
+        write(deps / "flumut_literature.tsv", "sample\treference\tpmid\n")
+        write(
             deps / "all_samples_protein_mutations.tsv",
             "sample\tsegment\tgene\tmutation\n"
             "SAMPLE_A\tA_HA\tHA\tK123N\n",
@@ -153,6 +166,9 @@ def main() -> int:
         assert "Open tree" in dashboard, dashboard
         assert "phylogeny/A_H3_HA/A_H3_HA.html" in dashboard, dashboard
         assert "Sample metadata" in dashboard, dashboard
+        assert "Avian H5N1 GenoFLU / FluMut" in dashboard, dashboard
+        assert "GsGD-like reassortant" in dashboard, dashboard
+        assert "PB2_E627K" in dashboard, dashboard
 
         assert (out_dir / "GISAID_ready" / "gisaid_sequences.fasta").read_text(encoding="utf-8") == (
             out_dir / "multisample_consensus.fasta"

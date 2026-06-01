@@ -20,6 +20,11 @@ nextflow_process {
                     file("${projectDir}/tests/data/surveillance_outputs/deps/blast_typing_summary.tsv"),
                     file("${projectDir}/tests/data/surveillance_outputs/deps/coinfection_report.tsv"),
                     file("${projectDir}/tests/data/surveillance_outputs/deps/depth_summary.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/flumut_literature.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/flumut_markers.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/flumut_mutations.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/genoflu_summary.tsv"),
+                    file("${projectDir}/tests/data/surveillance_outputs/deps/h5_avian_summary.tsv"),
                     file("${projectDir}/tests/data/surveillance_outputs/deps/h5_virulence_markers.tsv"),
                     file("${projectDir}/tests/data/surveillance_outputs/deps/multiqc_report.html"),
                     file("${projectDir}/tests/data/surveillance_outputs/deps/nextclade_summary.tsv"),
@@ -49,6 +54,9 @@ nextflow_process {
             assert reportHtml.contains("Open tree")
             assert reportHtml.contains("Sample metadata")
             assert reportHtml.contains("phylogeny/A_H3_HA/A_H3_HA.html")
+            assert reportHtml.contains("Avian H5N1 GenoFLU / FluMut")
+            assert reportHtml.contains("GsGD-like reassortant")
+            assert reportHtml.contains("PB2_E627K")
 
             def typing = outputs.resolve("typing_results.tsv").text
             assert typing.contains("Accession: LK054740 | Influenza")

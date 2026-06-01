@@ -1,0 +1,2 @@
+sample	type	subtype_HA	subtype_NA	segments_available	selected_for_h5_avian	genoflu_status	genoflu_genotype	genoflu_message
+SAMPLE_A	A	H5	N1	4,6	yes	ok	GsGD-like reassortant	GenoFLU completed

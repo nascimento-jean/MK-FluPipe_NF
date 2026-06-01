@@ -16,6 +16,7 @@ nextflow_pipeline {
                 run_ivar = "true"
                 run_antiviral = "true"
                 run_h5_virulence = "true"
+                run_h5_avian = "true"
                 run_fullvarcall = "true"
                 run_medaka = "false"
                 max_cpus = 2
@@ -33,17 +34,20 @@ nextflow_pipeline {
             assert surveillance.resolve("run_summary.json").exists()
             assert surveillance.resolve("antiviral_resistance/antiviral_resistance.tsv").exists()
             assert surveillance.resolve("h5_virulence/h5_virulence_markers.tsv").exists()
+            assert surveillance.resolve("h5_avian/h5_avian_summary.tsv").exists()
             assert surveillance.resolve("full_variant_calls/all_samples_protein_mutations.tsv").exists()
             assert outputDir.resolve("variant_calls/SAMPLE_A").exists()
             assert outputDir.resolve("full_variant_calls/SAMPLE_A").exists()
             assert outputDir.resolve("assembly_final/antiviral_resistance/antiviral_resistance.tsv").exists()
             assert outputDir.resolve("assembly_final/h5_virulence/h5_virulence_markers.tsv").exists()
+            assert outputDir.resolve("assembly_final/h5_avian/h5_avian_summary.tsv").exists()
 
             def summary = new groovy.json.JsonSlurper().parse(surveillance.resolve("run_summary.json"))
             assert summary.total_samples == 1
             assert surveillance.resolve("full_variant_calls/all_samples_protein_mutations.tsv").text.contains("SAMPLE_A")
             assert surveillance.resolve("surveillance_report.html").text.contains("Protein Mutations")
             assert surveillance.resolve("surveillance_report.html").text.contains("Resistance & H5")
+            assert surveillance.resolve("surveillance_report.html").text.contains("Avian H5N1 GenoFLU / FluMut")
         }
     }
 }

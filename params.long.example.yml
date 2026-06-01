@@ -13,6 +13,7 @@ run_ivar: false
 run_medaka: true
 run_antiviral: true
 run_h5_virulence: true
+run_h5_avian: false
 run_fullvarcall: true
 run_snpeff: true
 

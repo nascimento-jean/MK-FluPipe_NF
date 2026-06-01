@@ -25,3 +25,5 @@ dependencies:
   - augur
   - iqtree
   - snpeff
+  - genoflu
+  - flumut

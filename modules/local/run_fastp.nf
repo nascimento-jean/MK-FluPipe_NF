@@ -17,6 +17,7 @@ process RUN_FASTP {
     def minLen = params.min_len_short as String
     def minQual = params.min_qual as String
     def adapterArg = params.adapter_fasta ? "--adapter_fasta \"${params.adapter_fasta}\"" : ""
+    def detectAdapterArg = params.adapter_fasta ? "" : "--detect_adapter_for_pe"
     def fastpThreads = task.cpus as int
     def pigzThreads  = Math.max(1, fastpThreads)
     // Hard timeout for fastp itself (in seconds). If fastp deadlocks on its
@@ -97,7 +98,7 @@ process RUN_FASTP {
             --json "reports/${meta.id}.fastp.json" \\
             --qualified_quality_phred ${minQual} \\
             --length_required ${minLen} \\
-            --detect_adapter_for_pe ${adapterArg}
+            ${detectAdapterArg} ${adapterArg}
 
         # Ensure fastp's writes are flushed to the filesystem before pigz starts.
         sync

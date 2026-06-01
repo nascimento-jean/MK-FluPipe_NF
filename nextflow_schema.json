@@ -139,6 +139,11 @@
       "default": true,
       "description": "Run H5 virulence marker screening."
     },
+    "run_h5_avian": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run optional avian H5N1-focused GenoFLU/FluMut analysis for influenza A/H5N1 samples."
+    },
     "run_fullvarcall": {
       "type": "boolean",
       "default": false,

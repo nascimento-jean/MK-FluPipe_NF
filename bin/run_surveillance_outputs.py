@@ -560,6 +560,8 @@ def main():
         row["details"] = format_coinfection_detail(row.get("details", "-"))
     antiviral_rows = read_tsv(dep_map.get("antiviral_resistance.tsv", Path("__missing__")))
     h5_rows = read_tsv(dep_map.get("h5_virulence_markers.tsv", Path("__missing__")))
+    h5_avian_rows = read_tsv(dep_map.get("h5_avian_summary.tsv", Path("__missing__")))
+    flumut_marker_rows = read_tsv(dep_map.get("flumut_markers.tsv", Path("__missing__")))
     fullvar_rows = read_tsv(dep_map.get("all_samples_protein_mutations.tsv", Path("__missing__")))
     functional_rows = read_tsv(dep_map.get("functional_annotation.tsv", Path("__missing__")))
     snpeff_rows = read_tsv(dep_map.get("snpeff_annotation.tsv", Path("__missing__")))
@@ -680,6 +682,11 @@ def main():
     local_coinfection = ensure_local_copy(dep_map.get("coinfection_report.tsv"), out_dir / "coinfection" / "coinfection_report.tsv")
     local_antiviral = ensure_local_copy(dep_map.get("antiviral_resistance.tsv"), out_dir / "antiviral_resistance" / "antiviral_resistance.tsv")
     local_h5 = ensure_local_copy(dep_map.get("h5_virulence_markers.tsv"), out_dir / "h5_virulence" / "h5_virulence_markers.tsv")
+    local_h5_avian = ensure_local_copy(dep_map.get("h5_avian_summary.tsv"), out_dir / "h5_avian" / "h5_avian_summary.tsv")
+    local_genoflu = ensure_local_copy(dep_map.get("genoflu_summary.tsv"), out_dir / "h5_avian" / "genoflu_summary.tsv")
+    local_flumut_markers = ensure_local_copy(dep_map.get("flumut_markers.tsv"), out_dir / "h5_avian" / "flumut_markers.tsv")
+    local_flumut_mutations = ensure_local_copy(dep_map.get("flumut_mutations.tsv"), out_dir / "h5_avian" / "flumut_mutations.tsv")
+    local_flumut_literature = ensure_local_copy(dep_map.get("flumut_literature.tsv"), out_dir / "h5_avian" / "flumut_literature.tsv")
     local_fullvar = ensure_local_copy(dep_map.get("all_samples_protein_mutations.tsv"), out_dir / "full_variant_calls" / "all_samples_protein_mutations.tsv")
     local_functional = ensure_local_copy(dep_map.get("functional_annotation.tsv"), out_dir / "functional_annotation" / "functional_annotation.tsv")
     local_snpeff = ensure_local_copy(dep_map.get("snpeff_annotation.tsv"), out_dir / "snpeff_annotation" / "snpeff_annotation.tsv")
@@ -757,6 +764,11 @@ def main():
         ("Coinfection report", "coinfection/coinfection_report.tsv" if local_coinfection else ""),
         ("Antiviral resistance", "antiviral_resistance/antiviral_resistance.tsv" if local_antiviral else ""),
         ("H5 virulence markers", "h5_virulence/h5_virulence_markers.tsv" if local_h5 else ""),
+        ("H5 avian GenoFLU/FluMut summary", "h5_avian/h5_avian_summary.tsv" if local_h5_avian else ""),
+        ("GenoFLU summary", "h5_avian/genoflu_summary.tsv" if local_genoflu else ""),
+        ("FluMut markers", "h5_avian/flumut_markers.tsv" if local_flumut_markers else ""),
+        ("FluMut mutations", "h5_avian/flumut_mutations.tsv" if local_flumut_mutations else ""),
+        ("FluMut literature", "h5_avian/flumut_literature.tsv" if local_flumut_literature else ""),
         ("Protein mutations", "full_variant_calls/all_samples_protein_mutations.tsv" if local_fullvar else ""),
         ("Functional annotation", "functional_annotation/functional_annotation.tsv" if local_functional else ""),
         ("SnpEff annotation", "snpeff_annotation/snpeff_annotation.tsv" if local_snpeff else ""),
@@ -934,6 +946,12 @@ def main():
         "</div>",
         "<div class='section'>H5 virulence markers</div><div class='panel'>",
         render_html_table("tbl_h5", h5_rows, list(h5_rows[0].keys())) if h5_rows else render_empty_panel("No H5-associated virulence markers were reported in this run."),
+        "</div>",
+        "<div class='section'>Avian H5N1 GenoFLU / FluMut</div><div class='panel'>",
+        render_html_table("tbl_h5avian", h5_avian_rows, list(h5_avian_rows[0].keys()), "Optional H5 avian-focused GenoFLU/FluMut summary") if h5_avian_rows else render_empty_panel("Optional GenoFLU/FluMut H5 avian analysis was not run or produced no rows."),
+        "</div>",
+        "<div class='section'>FluMut markers</div><div class='panel'>",
+        render_html_table("tbl_flumut_markers", flumut_marker_rows, list(flumut_marker_rows[0].keys()), "Detected FluMut H5N1 markers") if flumut_marker_rows else render_empty_panel("No FluMut markers were detected or FluMut was not available."),
         "</div></div>",
         "<div class='tab-pane fade' id='coinfection'>",
         "<div class='section'>Coinfection and subtype mixing</div><div class='panel'>",
@@ -972,7 +990,7 @@ def main():
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js'></script>",
             "<script src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap5.min.js'></script>",
-            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_fvc');dt('tbl_funcann');dt('tbl_snpeff');dt('tbl_metadata');dt('tbl_phylogeny');dt('tbl_coinf',{paging:false,info:false});});</script>",
+            "<script>function dt(id, opts){if($('#'+id).length)$('#'+id).DataTable(Object.assign({pageLength:25,order:[],language:{search:'Search:',info:'_START_-_END_ of _TOTAL_',paginate:{previous:'Prev',next:'Next'}}},opts||{}));}$(function(){dt('tbl_typ_summary');dt('tbl_preprocess');dt('tbl_hostdep');dt('tbl_typing');dt('tbl_depth');dt('tbl_antiv');dt('tbl_h5');dt('tbl_h5avian');dt('tbl_flumut_markers');dt('tbl_fvc');dt('tbl_funcann');dt('tbl_snpeff');dt('tbl_metadata');dt('tbl_phylogeny');dt('tbl_coinf',{paging:false,info:false});});</script>",
             "<script>function dlExcel(tid){var wb=XLSX.utils.book_new();var ws=XLSX.utils.table_to_sheet(document.getElementById(tid));XLSX.utils.book_append_sheet(wb,ws,tid);XLSX.writeFile(wb,'MKFluPipe_'+tid+'_'+new Date().toISOString().slice(0,10)+'.xlsx');}</script>",
             f"<script>const charts={json.dumps(charts, ensure_ascii=False)};",
             """
@@ -1033,6 +1051,11 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         "  coinfection/coinfection_report.tsv         Co-infection analysis per sample\n"
         "  antiviral_resistance/antiviral_resistance.tsv Antiviral resistance mutations\n"
         "  h5_virulence/h5_virulence_markers.tsv      H5 virulence markers (if detected)\n"
+        "  h5_avian/h5_avian_summary.tsv              Optional GenoFLU/FluMut H5 avian summary\n"
+        "  h5_avian/genoflu_summary.tsv               Optional GenoFLU genotype summary\n"
+        "  h5_avian/flumut_markers.tsv                Optional FluMut detected markers\n"
+        "  h5_avian/flumut_mutations.tsv              Optional FluMut mutation details\n"
+        "  h5_avian/flumut_literature.tsv             Optional FluMut literature references\n"
         "  full_variant_calls/all_samples_protein_mutations.tsv Protein mutation calls\n"
         "  functional_annotation/functional_annotation.tsv Structured functional annotation of protein mutation calls\n"
         "  snpeff_annotation/snpeff_annotation.tsv Optional SnpEff annotation of full variant call iVar TSV outputs\n"
@@ -1049,6 +1072,8 @@ mkGroupedBar('chartHostDepletion', charts.hostDepletion.labels, charts.hostDeple
         f"Coinfection rows: {len(coinfection_rows)}",
         f"Antiviral rows: {len(antiviral_rows)}",
         f"H5 rows: {len(h5_rows)}",
+        f"H5 avian summary rows: {len(h5_avian_rows)}",
+        f"FluMut marker rows: {len(flumut_marker_rows)}",
         f"Protein mutation rows: {len(fullvar_rows)}",
         f"SnpEff annotation rows: {len(snpeff_rows)}",
         f"MultiQC report copied: {'yes' if local_multiqc else 'no'}",

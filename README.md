@@ -35,7 +35,7 @@
 
 ## Overview
 
-`MK Flu-Pipe Nextflow` is a containerized workflow for Influenza genomic surveillance. It supports Illumina short reads and Oxford Nanopore long reads and produces consensus FASTA files, assembly QC, typing and subtyping, Nextclade clades, antiviral resistance summaries, H5 virulence markers, protein mutation tables, GISAID-ready files, optional HA/NA phylogenies, and an interactive HTML dashboard.
+`MK Flu-Pipe Nextflow` is a containerized workflow for Influenza genomic surveillance. It supports Illumina short reads and Oxford Nanopore long reads and produces consensus FASTA files, assembly QC, typing and subtyping, Nextclade clades, antiviral resistance summaries, H5 virulence markers, optional avian H5 GenoFLU/FluMut summaries, protein mutation tables, GISAID-ready files, optional HA/NA phylogenies, and an interactive HTML dashboard.
 
 The workflow is designed for local Linux/Ubuntu/WSL execution with Docker or Singularity/Apptainer. It can run complete analyses while keeping CPU, memory, and process concurrency configurable through Nextflow parameters.
 
@@ -108,7 +108,7 @@ The workflow uses three container groups:
 | Container group | Purpose |
 |---|---|
 | `irma_tools` | IRMA assembly through `cdcgov/irma:v1.3.2`. |
-| `mk_flu_tools` | Main workflow tools including FastQC, fastp, Filtlong, BLAST, Nextclade, Augur, IQ-TREE, and helper scripts. |
+| `mk_flu_tools` | Main workflow tools including FastQC, fastp, Filtlong, BLAST, Nextclade, Augur, IQ-TREE, GenoFLU/FluMut hooks, and helper scripts. |
 | `medaka_tools` | Medaka-related tools for long-read variant analysis. |
 
 Build Docker images:
@@ -147,6 +147,8 @@ By default, the `ghcr` profile uses `--container_tag latest`. For reproducible r
 ```bash
 --container_tag v0.1.2
 ```
+
+The same publishing workflow can optionally push images to DockerHub. This is disabled by default and becomes active only when repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are configured. An optional `DOCKERHUB_NAMESPACE` secret can be used when the target DockerHub namespace differs from the username.
 
 ## Running The Pipeline
 
@@ -190,6 +192,7 @@ nextflow run main.nf \
   --run_ivar true \
   --run_antiviral true \
   --run_h5_virulence true \
+  --run_h5_avian true \
   --run_fullvarcall true
 ```
 
@@ -207,6 +210,7 @@ nextflow run main.nf \
   --run_medaka true \
   --run_antiviral true \
   --run_h5_virulence true \
+  --run_h5_avian true \
   --run_fullvarcall true \
   --run_snpeff true
 ```
@@ -245,6 +249,7 @@ nextflow run main.nf \
   --queue_size 2 \
   --run_ivar true \
   --run_fullvarcall true \
+  --run_h5_avian true \
   --run_snpeff true
 ```
 
@@ -265,6 +270,7 @@ nextflow run main.nf \
   --run_medaka true \
   --run_antiviral true \
   --run_h5_virulence true \
+  --run_h5_avian true \
   --run_fullvarcall true \
   --run_snpeff true \
   --metadata_csv /path/to/sample_metadata.csv \
@@ -420,6 +426,7 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--run_medaka` | `false` | Enable canonical long-read variant calling with Medaka. Required for long-read antiviral resistance analysis. |
 | `--run_antiviral` | `true` | Run antiviral resistance analysis. |
 | `--run_h5_virulence` | `true` | Run H5 virulence marker analysis. |
+| `--run_h5_avian` | `false` | Run optional avian H5N1-focused GenoFLU/FluMut analysis for influenza A/H5N1 samples. Missing GenoFLU or FluMut executables are reported as `tool_missing` instead of stopping the pipeline. |
 | `--run_fullvarcall` | `false` | Run full protein mutation calling. |
 | `--run_snpeff` | `false` | Run optional experimental SnpEff annotation for full variant call iVar TSV outputs. Requires `--run_fullvarcall true`. Works for short-read and long-read full variant call outputs. |
 | `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
@@ -535,6 +542,7 @@ All outputs are written under `--output_dir`.
 | `full_variant_calls/` | Per-sample and merged full protein mutation reports. |
 | `functional_annotation/` | Structured functional annotation table derived from full variant call protein mutation outputs. |
 | `snpeff_annotation/` | Optional SnpEff annotation table generated from short-read or long-read full variant call iVar TSV outputs when `--run_snpeff true` is used. |
+| `assembly_final/h5_avian/` | Optional GenoFLU/FluMut H5 avian outputs when `--run_h5_avian true` is used. |
 | `Surveillance_Outputs/` | Main final delivery folder for dashboard, final tables, FASTA exports, GISAID-ready files, metadata, and phylogeny outputs. |
 | `legacy_bridge/` | Optional legacy bridge outputs when enabled. |
 
@@ -551,6 +559,11 @@ All outputs are written under `--output_dir`.
 | `Surveillance_Outputs/run_summary.tsv` | Compact integrated per-sample run summary. |
 | `Surveillance_Outputs/run_summary.json` | JSON version of the integrated run summary. |
 | `Surveillance_Outputs/multisample_consensus.fasta` | Multi-sample final consensus FASTA with per-sample/per-segment identifiers. |
+| `Surveillance_Outputs/h5_avian/h5_avian_summary.tsv` | Optional avian H5N1-focused summary with GenoFLU and FluMut status, genotype, marker count, and messages. |
+| `Surveillance_Outputs/h5_avian/genoflu_summary.tsv` | Optional GenoFLU genotype summary for selected influenza A/H5N1 samples. |
+| `Surveillance_Outputs/h5_avian/flumut_markers.tsv` | Optional FluMut marker table. |
+| `Surveillance_Outputs/h5_avian/flumut_mutations.tsv` | Optional FluMut mutation details. |
+| `Surveillance_Outputs/h5_avian/flumut_literature.tsv` | Optional FluMut literature/reference table. |
 | `Surveillance_Outputs/functional_annotation/functional_annotation.tsv` | Structured functional annotation of protein mutation calls when `--run_fullvarcall true` is used. |
 | `Surveillance_Outputs/snpeff_annotation/snpeff_annotation.tsv` | Optional SnpEff annotation when `--run_snpeff true` is used. |
 | `Surveillance_Outputs/metadata.csv` | Validated sample metadata when `--metadata_csv` is provided. |
@@ -585,6 +598,8 @@ Generated only when `--run_phylogeny true`.
 |---|---|
 | `assembly_final/antiviral_resistance/antiviral_resistance.tsv` | Antiviral resistance calls. |
 | `assembly_final/h5_virulence/h5_virulence_markers.tsv` | H5 virulence marker results. |
+| `assembly_final/h5_avian/h5_avian_summary.tsv` | Optional GenoFLU/FluMut H5 avian summary. |
+| `assembly_final/h5_avian/*.h5_avian.fasta` | Per-sample segment FASTA files used for optional GenoFLU/FluMut H5 avian analysis. |
 | `assembly_final/coinfection/coinfection_report.tsv` | Coinfection/subtype mixing summary. |
 | `full_variant_calls/*.fullvarcall` | Per-sample protein mutation reports. |
 | `full_variant_calls/all_samples_protein_mutations.tsv` | Consolidated protein mutation table. |
@@ -606,7 +621,7 @@ If `mk_flupipe_db/` is deleted, required resources are rebuilt or downloaded on 
 
 ## Automated Tests
 
-The repository includes lightweight checks for schema validation, sample discovery, metadata validation, phylogeny grouping, surveillance output rendering, and selected Nextflow parameter validation.
+The repository includes lightweight checks for schema validation, sample discovery, metadata validation, phylogeny grouping, optional H5 avian analysis, surveillance output rendering, and selected Nextflow parameter validation.
 
 Run local Python smoke tests:
 
@@ -614,6 +629,7 @@ Run local Python smoke tests:
 python3 tests/check_discover_samples.py
 python3 tests/check_metadata.py
 python3 tests/check_phylogeny.py
+python3 tests/check_h5_avian_analysis.py
 python3 tests/check_light_integration.py
 python3 tests/check_surveillance_outputs.py
 ```

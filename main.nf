@@ -47,6 +47,7 @@ include { RUN_ANTIVIRAL_RESISTANCE } from './modules/local/run_antiviral_resista
 include { RUN_MEDAKA_CANONICAL } from './modules/local/run_medaka_canonical'
 include { RUN_ANTIVIRAL_RESISTANCE_LONG } from './modules/local/run_antiviral_resistance_long'
 include { RUN_H5_VIRULENCE } from './modules/local/run_h5_virulence'
+include { RUN_H5_AVIAN_ANALYSIS } from './modules/local/run_h5_avian_analysis'
 include { PRECHECK_MEDAKA_VARIANTS } from './modules/local/precheck_medaka_variants'
 include { RUN_MEDAKA_VARIANTS } from './modules/local/run_medaka_variants'
 include { RUN_COINFECTION } from './modules/local/run_coinfection'
@@ -86,6 +87,7 @@ def validateParams() {
     def runAntiviral = paramBool(params.run_antiviral)
     def runFullvarcall = paramBool(params.run_fullvarcall)
     def runSnpeff = paramBool(params.run_snpeff)
+    def runH5Avian = paramBool(params.run_h5_avian)
     def runPhylogeny = paramBool(params.run_phylogeny)
     def runLegacyBridge = paramBool(params.run_legacy_bridge)
 
@@ -351,6 +353,7 @@ workflow {
     def runMedaka = paramBool(params.run_medaka)
     def runAntiviral = paramBool(params.run_antiviral)
     def runH5Virulence = paramBool(params.run_h5_virulence)
+    def runH5Avian = paramBool(params.run_h5_avian)
     def runFullvarcall = paramBool(params.run_fullvarcall)
     def runSnpeff = paramBool(params.run_snpeff)
     def runPhylogeny = paramBool(params.run_phylogeny)
@@ -366,6 +369,7 @@ workflow {
     log.info "Seq type        : ${params.seq_type}"
     log.info "Seq mode        : ${params.seq_mode ?: 'auto'}"
     log.info "SnpEff          : ${runSnpeff ? 'enabled' : 'disabled'}"
+    log.info "H5 avian tools  : ${runH5Avian ? 'GenoFLU/FluMut enabled' : 'disabled'}"
     log.info "Phylogeny       : ${runPhylogeny ? 'HA/NA with Augur' : 'disabled'}"
     log.info "Legacy bridge   : ${runLegacyBridge}"
 
@@ -772,6 +776,13 @@ workflow {
         )
     }
 
+    if( runH5Avian ) {
+        RUN_H5_AVIAN_ANALYSIS(
+            RUN_BLAST_TYPING.out.summary,
+            RUN_EXTRACT_SEGMENTS.out.segment_files.flatten().collect()
+        )
+    }
+
     RUN_COINFECTION(
         irmaDirs
             .map { meta, irmaDir -> irmaDir }
@@ -797,6 +808,10 @@ workflow {
 
     if( runH5Virulence ) {
         surveillanceDependencies = surveillanceDependencies.mix(RUN_H5_VIRULENCE.out.report)
+    }
+
+    if( runH5Avian ) {
+        surveillanceDependencies = surveillanceDependencies.mix(RUN_H5_AVIAN_ANALYSIS.out.reports)
     }
 
     if( runFullvarcall ) {
