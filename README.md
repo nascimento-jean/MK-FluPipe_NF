@@ -26,6 +26,8 @@
 - [Input Files](#input-files)
 - [Sample Metadata](#sample-metadata)
 - [Optional HA/NA Phylogeny](#optional-hana-phylogeny)
+- [Optional SnpEff Annotation](#optional-snpeff-annotation)
+- [Optional Avian H5N1 GenoFLU And FluMut Analysis](#optional-avian-h5n1-genoflu-and-flumut-analysis)
 - [Parameters](#parameters)
 - [Outputs](#outputs)
 - [Databases And Cache](#databases-and-cache)
@@ -55,10 +57,11 @@ The workflow is designed for local Linux/Ubuntu/WSL execution with Docker or Sin
 10. Optionally call canonical variants with `iVar`.
 11. Screen antiviral resistance markers.
 12. Screen H5 virulence markers when relevant.
-13. Optionally run full protein mutation calling.
-14. Detect coinfection or subtype-mixing signals.
-15. Optionally build HA/NA phylogenies with `Augur`.
-16. Generate surveillance outputs and the HTML dashboard.
+13. Optionally run full protein mutation calling and annotate nucleotide variants with `SnpEff`.
+14. Optionally characterize avian A/H5N1 samples with `GenoFLU` and `FluMut`.
+15. Detect coinfection or subtype-mixing signals.
+16. Optionally build HA/NA phylogenies with `Augur`.
+17. Generate surveillance outputs and the HTML dashboard.
 
 ### Long-read branch
 
@@ -74,10 +77,11 @@ The workflow is designed for local Linux/Ubuntu/WSL execution with Docker or Sin
 10. Optionally call canonical variants with `Medaka`.
 11. Screen antiviral resistance markers.
 12. Screen H5 virulence markers when relevant.
-13. Optionally run full protein mutation calling.
-14. Detect coinfection or subtype-mixing signals.
-15. Optionally build HA/NA phylogenies with `Augur`.
-16. Generate surveillance outputs and the HTML dashboard.
+13. Optionally run full protein mutation calling and annotate nucleotide variants with `SnpEff`.
+14. Optionally characterize avian A/H5N1 samples with `GenoFLU` and `FluMut`.
+15. Detect coinfection or subtype-mixing signals.
+16. Optionally build HA/NA phylogenies with `Augur`.
+17. Generate surveillance outputs and the HTML dashboard.
 
 ## Requirements
 
@@ -111,26 +115,39 @@ The workflow uses three container groups:
 | `mk_flu_tools` | Main workflow tools including FastQC, fastp, Filtlong, BLAST, Nextclade, Augur, IQ-TREE, GenoFLU/FluMut hooks, and helper scripts. |
 | `medaka_tools` | Medaka-related tools for long-read variant analysis. |
 
-Build Docker images:
+Published DockerHub images are used automatically by the standard Docker and
+Singularity profiles:
+
+| Image | DockerHub path |
+|---|---|
+| Main workflow tools | `docker.io/jeannascimento/mk-flupipe-nf-mk-flu-tools:latest` |
+| Medaka tools | `docker.io/jeannascimento/mk-flupipe-nf-medaka-tools:latest` |
+
+Nextflow downloads the required image automatically when running with
+`-profile linux,docker` or `-profile linux,singularity`.
+
+To build and use local Docker images instead:
 
 ```bash
 bash containers/build_docker_images.sh
+nextflow run main.nf -profile linux,docker,local ...
 ```
 
-Build Singularity/Apptainer images:
+To build and use local Singularity/Apptainer images:
 
 ```bash
 bash containers/build_singularity_images.sh
+nextflow run main.nf -profile linux,singularity,local ...
 ```
 
-Public container images can also be used from GitHub Container Registry (GHCR) after they are published by the repository workflow:
+GitHub Container Registry remains available as an alternative:
 
 | Image | GHCR path |
 |---|---|
 | Main workflow tools | `ghcr.io/nascimento-jean/mk-flupipe-nf-mk-flu-tools:<tag>` |
 | Medaka tools | `ghcr.io/nascimento-jean/mk-flupipe-nf-medaka-tools:<tag>` |
 
-Use the extra `ghcr` profile to replace local images with GHCR images:
+Use the extra `ghcr` profile to replace the default DockerHub images with GHCR images:
 
 ```bash
 -profile linux,docker,ghcr
@@ -148,7 +165,7 @@ By default, the `ghcr` profile uses `--container_tag latest`. For reproducible r
 --container_tag v0.1.2
 ```
 
-The same publishing workflow can optionally push images to DockerHub. This is disabled by default and becomes active only when repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are configured. An optional `DOCKERHUB_NAMESPACE` secret can be used when the target DockerHub namespace differs from the username.
+The repository publishing workflow maintains both GHCR and DockerHub images.
 
 ## Running The Pipeline
 
@@ -164,16 +181,23 @@ or:
 -profile linux,singularity
 ```
 
-To use published GHCR images instead of locally built images, add the `ghcr` profile:
+The standard commands automatically download the published DockerHub images.
+To force locally built images, add the `local` profile:
 
 ```bash
--profile linux,docker,ghcr
+-profile linux,docker,local
 ```
 
 or:
 
 ```bash
--profile linux,singularity,ghcr
+-profile linux,singularity,local
+```
+
+To use GHCR instead of DockerHub, add the optional `ghcr` profile:
+
+```bash
+-profile linux,docker,ghcr
 ```
 
 The `wsl` and `ubuntu` profiles are retained as compatibility aliases, but `linux` is the recommended profile.
@@ -404,6 +428,92 @@ For each generated tree, MK Flu-Pipe also writes an offline `HTML` viewer next t
 
 GISAID sequences are not downloaded automatically. If GISAID context is used, authorized users must download the sequences and metadata themselves and analyze them locally according to GISAID terms. NCBI or other public context datasets can be supplied through the same FASTA/metadata interface.
 
+## Optional SnpEff Annotation
+
+The optional SnpEff module adds structured functional interpretation to the
+nucleotide variants generated during full variant calling. It reports predicted
+effects such as synonymous, missense, and other coding consequences, together
+with impact category, gene or feature, HGVS notation, variant frequency, and
+depth.
+
+Enable it with:
+
+```bash
+--run_fullvarcall true \
+--run_snpeff true
+```
+
+How the module works:
+
+1. Reads the per-sample iVar TSV files produced by the full variant call branch.
+2. Uses BLAST typing results to determine Influenza type and subtype.
+3. Selects the appropriate Influenza A H1, H3, H5, or Influenza B RefSeq
+   segment references.
+4. Builds the required local SnpEff databases from cached RefSeq FASTA and GFF3
+   files.
+5. Annotates variants and consolidates results into a single TSV table.
+
+Important considerations:
+
+- `--run_snpeff true` requires `--run_fullvarcall true`.
+- The module is available for both short-read and long-read runs because it
+  consumes the common full variant call outputs.
+- SnpEff annotation is reference-dependent. Effects describe variants relative
+  to the selected RefSeq segment and should be interpreted together with
+  subtype, coverage, frequency, and depth.
+- Build or annotation problems are recorded in the `status` and `message`
+  columns instead of being silently discarded.
+
+Main output:
+
+```text
+Surveillance_Outputs/snpeff_annotation/snpeff_annotation.tsv
+```
+
+The annotation table is also displayed in the `SnpEff Annotation` section of
+the HTML dashboard.
+
+## Optional Avian H5N1 GenoFLU And FluMut Analysis
+
+The optional avian H5 module provides additional characterization specifically
+for Influenza A/H5N1 samples. It combines:
+
+- `GenoFLU` for H5N1 genotype assignment;
+- `FluMut` for mutation and molecular-marker screening, including associated
+  literature when provided by the tool.
+
+Enable it with:
+
+```bash
+--run_h5_avian true
+```
+
+The module uses the final consensus segment FASTA files, so the same analysis is
+available for both short-read and long-read runs. Samples are first classified
+using the pipeline typing results; only samples identified as Influenza A with
+HA subtype H5 and NA subtype N1 are selected for GenoFLU/FluMut execution.
+Non-H5N1 samples remain documented in the summary but are not analyzed by these
+tools.
+
+The wrapper is intentionally defensive:
+
+- a missing GenoFLU or FluMut executable is reported as `tool_missing`;
+- a tool failure is recorded in the output tables and log;
+- failures in this optional module do not stop the complete surveillance run.
+
+Main outputs:
+
+| Path | Contents |
+|---|---|
+| `Surveillance_Outputs/h5_avian/h5_avian_summary.tsv` | Integrated selection status, GenoFLU genotype, FluMut marker count, and messages. |
+| `Surveillance_Outputs/h5_avian/genoflu_summary.tsv` | GenoFLU genotype results for selected A/H5N1 samples. |
+| `Surveillance_Outputs/h5_avian/flumut_markers.tsv` | FluMut molecular markers detected. |
+| `Surveillance_Outputs/h5_avian/flumut_mutations.tsv` | Detailed FluMut mutation calls. |
+| `Surveillance_Outputs/h5_avian/flumut_literature.tsv` | Literature references associated with FluMut findings. |
+
+The integrated summary and FluMut markers are also presented in the
+`Resistance & H5` area of the HTML dashboard.
+
 ## Parameters
 
 ### Core run parameters
@@ -426,9 +536,9 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--run_medaka` | `false` | Enable canonical long-read variant calling with Medaka. Required for long-read antiviral resistance analysis. |
 | `--run_antiviral` | `true` | Run antiviral resistance analysis. |
 | `--run_h5_virulence` | `true` | Run H5 virulence marker analysis. |
-| `--run_h5_avian` | `false` | Run optional avian H5N1-focused GenoFLU/FluMut analysis for influenza A/H5N1 samples. Missing GenoFLU or FluMut executables are reported as `tool_missing` instead of stopping the pipeline. |
+| `--run_h5_avian` | `false` | Run optional avian H5N1-focused GenoFLU genotype assignment and FluMut marker screening. Only typed A/H5N1 samples are selected; missing tools or failures are reported without stopping the pipeline. |
 | `--run_fullvarcall` | `false` | Run full protein mutation calling. |
-| `--run_snpeff` | `false` | Run optional experimental SnpEff annotation for full variant call iVar TSV outputs. Requires `--run_fullvarcall true`. Works for short-read and long-read full variant call outputs. |
+| `--run_snpeff` | `false` | Run optional SnpEff functional annotation for full variant call iVar TSV outputs. Requires `--run_fullvarcall true` and works with both short-read and long-read full variant call outputs. |
 | `--run_phylogeny` | `false` | Run optional Augur HA/NA phylogeny. Requires `--metadata_csv`. |
 | `--run_legacy_bridge` | `false` | Run the optional legacy Bash bridge after the Nextflow workflow. Normally disabled. |
 
@@ -436,8 +546,8 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 
 | Parameter | Default | Description |
 |---|---:|---|
-| `--container_registry` | `ghcr.io/nascimento-jean` | Registry namespace used by the `ghcr` profile. |
-| `--container_tag` | `latest` | Image tag used by the `ghcr` profile. Use a release tag such as `v0.1.2` for reproducible runs. |
+| `--container_registry` | `docker.io/jeannascimento` | Default published container registry namespace. The optional `ghcr` profile switches this to GHCR. |
+| `--container_tag` | `latest` | Published image tag. Use a release tag such as `v0.1.2` for reproducible runs. |
 
 ### Short-read preprocessing parameters
 
@@ -498,7 +608,7 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 | `--irma_threads` | `4` | Threads requested by IRMA tasks. |
 | `--fastp_max_forks` | `2` | Maximum concurrent fastp tasks. |
 | `--fastp_timeout` | `1800` | Hard timeout in seconds for a fastp task. |
-| `--fastp_startup_timeout` | `300` | Startup watchdog in seconds for fastp. |
+| `--fastp_startup_timeout` | `0` | Optional fastp startup watchdog in seconds. `0` disables the startup watchdog. |
 | `--host_depletion_max_forks` | `2` | Maximum concurrent host depletion tasks. |
 | `--irma_max_forks` | `2` | Maximum concurrent IRMA tasks. |
 
@@ -506,11 +616,11 @@ GISAID sequences are not downloaded automatically. If GISAID context is used, au
 
 | Parameter | Default | Description |
 |---|---:|---|
-| `--mk_flu_docker_image` | `mk-flu-pipe/mk_flu_tools:local` | Docker image for the main workflow tools. |
-| `--medaka_docker_image` | `mk-flu-pipe/medaka_tools:local` | Docker image for Medaka tools. |
+| `--mk_flu_docker_image` | `docker.io/jeannascimento/mk-flupipe-nf-mk-flu-tools:latest` | Published Docker image for the main workflow tools. |
+| `--medaka_docker_image` | `docker.io/jeannascimento/mk-flupipe-nf-medaka-tools:latest` | Published Docker image for Medaka tools. |
 | `--irma_docker_image` | `cdcgov/irma:v1.3.2` | Docker image for IRMA. |
-| `--mk_flu_singularity_image` | `${projectDir}/containers/sif/mk_flu_tools_local.sif` | Singularity image for main workflow tools. |
-| `--medaka_singularity_image` | `${projectDir}/containers/sif/medaka_tools_local.sif` | Singularity image for Medaka tools. |
+| `--mk_flu_singularity_image` | `docker://docker.io/jeannascimento/mk-flupipe-nf-mk-flu-tools:latest` | Published OCI image used by Singularity/Apptainer for main workflow tools. |
+| `--medaka_singularity_image` | `docker://docker.io/jeannascimento/mk-flupipe-nf-medaka-tools:latest` | Published OCI image used by Singularity/Apptainer for Medaka tools. |
 | `--irma_singularity_image` | `docker://cdcgov/irma:v1.3.2` | Singularity/Apptainer IRMA image source. |
 | `--singularity_cache_dir` | `${HOME}/.singularity/cache` | Singularity cache directory. |
 | `--human_db_dir` | `${HOME}/mk_flupipe_db/human_genome` | Human reference/index directory. |
