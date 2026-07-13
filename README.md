@@ -608,7 +608,9 @@ The integrated summary and FluMut markers are also presented in the
 | `--irma_threads` | `4` | Threads requested by IRMA tasks. |
 | `--fastp_max_forks` | `2` | Maximum concurrent fastp tasks. |
 | `--fastp_timeout` | `1800` | Hard timeout in seconds for a fastp task. |
-| `--fastp_startup_timeout` | `0` | Optional fastp startup watchdog in seconds. `0` disables the startup watchdog. |
+| `--fastp_startup_timeout` | `300` | Abort and retry fastp if it creates no output for this many seconds. `0` disables the startup watchdog. |
+| `--task_timeout` | `2h` | Default walltime limit for every task; known long-running stages receive larger limits. |
+| `--task_max_retries` | `1` | Automatic retries for tasks killed by timeout or transient resource signals. |
 | `--host_depletion_max_forks` | `2` | Maximum concurrent host depletion tasks. |
 | `--irma_max_forks` | `2` | Maximum concurrent IRMA tasks. |
 

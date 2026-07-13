@@ -26,10 +26,9 @@ process RUN_FASTP {
     // the task instead of hanging forever. Configurable via params.fastp_timeout
     // in nextflow.config (default 1800s = 30 min).
     def fastpTimeoutSec = (params.fastp_timeout ?: 1800) as int
-    // Optional startup watchdog. It is disabled by default because fastp can
-    // spend several minutes detecting adapters/filtering before creating final
-    // output files, especially for larger samples.
-    def fastpStartupTimeoutSec = (params.fastp_startup_timeout ?: 0) as int
+    // Startup watchdog for the silent futex deadlock case. The default allows
+    // five minutes for adapter detection before requiring any output file.
+    def fastpStartupTimeoutSec = params.fastp_startup_timeout as int
 
     if( meta.layout == 'paired' ) {
         """

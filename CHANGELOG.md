@@ -18,8 +18,8 @@ The project follows semantic versioning whenever possible:
 
 ### Fixed
 
-- Disabled the short fastp startup watchdog by default (`fastp_startup_timeout = 0`) to avoid killing healthy fastp jobs that take several minutes before producing final output files.
-- Updated parameter validation so `--fastp_startup_timeout 0` is accepted as the documented "disabled" value.
+- Added a global task walltime and transient-failure retry policy so no pipeline stage can wait indefinitely, with larger limits for reference preparation, host depletion, IRMA, Medaka, phylogeny, and the legacy bridge.
+- Enabled the five-minute fastp startup watchdog by default so silent futex deadlocks are retried promptly instead of waiting for the 30-minute hard timeout.
 
 ## [v0.1.2] - 2026-05-30
 

@@ -54,6 +54,8 @@ irma_threads: 4
 fastp_max_forks: 2
 fastp_timeout: 1800
 fastp_startup_timeout: 300
+task_timeout: 2h
+task_max_retries: 1
 host_depletion_max_forks: 2
 irma_max_forks: 2
 

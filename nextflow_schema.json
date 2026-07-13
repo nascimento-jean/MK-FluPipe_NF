@@ -354,8 +354,19 @@
     },
     "fastp_startup_timeout": {
       "$ref": "#/definitions/non_negative_integer",
-      "default": 0,
+      "default": 300,
       "description": "Optional startup watchdog in seconds for fastp tasks. Use 0 to disable it."
+    },
+    "task_timeout": {
+      "type": "string",
+      "default": "2h",
+      "pattern": "^[0-9]+(\\.[0-9]+)?\\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)$",
+      "description": "Default walltime limit for every task. Long-running processes have larger built-in limits."
+    },
+    "task_max_retries": {
+      "$ref": "#/definitions/non_negative_integer",
+      "default": 1,
+      "description": "Number of automatic retries for tasks terminated by timeout or transient resource signals."
     },
     "host_depletion_max_forks": {
       "$ref": "#/definitions/positive_integer",

@@ -242,6 +242,12 @@ def validateParams() {
     if( !isIntegerLike(params.fastp_startup_timeout) || params.fastp_startup_timeout.toString().toInteger() < 0 ) {
         errors << "--fastp_startup_timeout must be 0 or a positive integer"
     }
+    if( !isIntegerLike(params.task_max_retries) || params.task_max_retries.toString().toInteger() < 0 ) {
+        errors << "--task_max_retries must be 0 or a positive integer"
+    }
+    if( !params.task_timeout || !(params.task_timeout.toString().trim() ==~ /(?i)^\d+(\.\d+)?\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)$/) ) {
+        errors << "--task_timeout must be a duration such as 30min, 2h, or 1day"
+    }
     else if( isIntegerLike(params.min_len_long) && params.max_len_long.toString().toInteger() > 0 && params.max_len_long.toString().toInteger() < params.min_len_long.toString().toInteger() ) {
         errors << "--max_len_long must be greater than or equal to --min_len_long, or 0 to disable the upper limit"
     }
