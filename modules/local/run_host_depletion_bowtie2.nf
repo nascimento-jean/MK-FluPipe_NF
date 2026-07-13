@@ -16,13 +16,14 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
     tuple val(meta), path("${meta.id}_host_depletion_manifest.tsv"), emit: manifests
 
     script:
-    def indexPrefix = "human/${params.human_index_prefix as String}"
+    // Nextflow already stages the prepared index files in the task directory.
+    // Use those links directly: dereferencing them with `cp -L` would create a
+    // complete copy of the human reference (several GB) for every sample.
+    def indexPrefix = params.human_index_prefix as String
 
     if( meta.layout == 'paired' ) {
         """
-        mkdir -p depleted reports human
-        cp -L "${human_fasta}" human/
-        cp -L ${human_index_files.collect { "\"${it}\"" }.join(' ')} human/
+        mkdir -p depleted reports
 
         bowtie2 \
             -x "${indexPrefix}" \
@@ -67,9 +68,7 @@ process RUN_HOST_DEPLETION_BOWTIE2 {
     }
     else {
         """
-        mkdir -p depleted reports human
-        cp -L "${human_fasta}" human/
-        cp -L ${human_index_files.collect { "\"${it}\"" }.join(' ')} human/
+        mkdir -p depleted reports
 
         bowtie2 \
             -x "${indexPrefix}" \
